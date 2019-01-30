@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -35,6 +36,8 @@ const (
 	InstanceFile   = "instance"
 	MgmtFunc       = ".1"
 	UserFunc       = ".0"
+	MgmtFile       = "mgmt_pf"
+	UserFile       = "user_pf"
 	VendorFile     = "vendor"
 	DeviceFile     = "device"
 	XilinxVendorID = "0x10ee"
@@ -103,8 +106,54 @@ func GetFileContent(file string) (string, error) {
 	}
 }
 
+//Prior to 2018.3 release, Xilinx FPGA has mgmt PF as func 1 and user PF
+//as func 0. The func numbers of the 2 PFs are swapped after 2018.3 release.
+//The FPGA device driver in (and after) 2018.3 release creates sysfs file --
+//mgmt_pf and user_pf accordingly to reflect what a PF really is.
+//the k8s fpga plugin may manage a cluster with hybrid FPGAs (with old and new
+//DSAs), so we need to have a workaround here to distinguish user and mgmt PFs.
+//the logic is as follows:
+//if (pci func is 1) { //it may be mgmt func of old dsa or user func of new dsa
+//    if (there is no user_pf file) { // old dsa
+//        this is mgmt func
+//    }
+//} else { // it may be user func of old dsa or mgmt func of new dsa
+//    if (there exists mgmt_pf file) { // new dsa
+//        this is mgmt func
+//    }
+//}
+//TODO: In the future, an API should be introduced in xrt so that the plugin
+//does not need to know the hardware and low level software changes.
+//But even with an API, we still need to handle old DSA & XRT. So the workaround
+//is still necessary. Sigh...
+func FileExist(fname string) bool {
+	if _, err := os.Stat(fname); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
+}
+
+func IsMgmtPf(pciID string) bool {
+	if strings.HasSuffix(pciID, MgmtFunc) {
+		fname := path.Join(SysfsDevices, pciID, UserFile)
+		if !FileExist(fname) {
+			return true
+		}
+		return false
+	} else {
+		fname := path.Join(SysfsDevices, pciID, MgmtFile)
+		if FileExist(fname) {
+			return true
+		}
+		return false
+	}
+}
+
 func GetDevices() ([]Device, error) {
 	var devices []Device
+	pairMap := make(map[string]*Pairs)
 	pciFiles, err := ioutil.ReadDir(SysfsDevices)
 	if err != nil {
 		return nil, fmt.Errorf("Can't read folder %s \n", SysfsDevices)
@@ -122,12 +171,20 @@ func GetDevices() ([]Device, error) {
 			continue
 		}
 
+		DBD := pciID[:len(pciID)-2]
+		if _, ok := pairMap[DBD]; !ok {
+			pairMap[DBD] = &Pairs{
+				Mgmt: "",
+				User: "",
+			}
+		}
+
 		// For containers deployed on top of baremetal machines, xilinx FPGA
 		// in sysfs will always appear as pair of mgmt PF and user PF
 		// For containers deployed on top of VM, there may be only user PF
 		// available(mgmt PF is not assigned to the VM)
-		// so mgmt in Pari may be empty
-		if strings.HasSuffix(pciID, UserFunc) { //user pf
+		// so mgmt in Pair may be empty
+		if !IsMgmtPf(pciID) { //user pf
 			userDBDF := pciID
 			instance, err := GetInstance(userDBDF)
 			if err != nil {
@@ -160,6 +217,7 @@ func GetDevices() ([]Device, error) {
 				return nil, err
 			}
 			userNode := path.Join(UserPrefix, userpf)
+			pairMap[DBD].User = userNode
 
 			//TODO: check temp, power, fan speed etc, to give a healthy level
 			//so far, return Healthy
@@ -171,27 +229,16 @@ func GetDevices() ([]Device, error) {
 				DBDF:      userDBDF,
 				deviceID:  devid,
 				Healthy:   healthy,
-				Nodes: Pairs{
-					Mgmt: "",
-					User: userNode,
-				},
+				Nodes:     *pairMap[DBD],
 			})
-		}
-		if strings.HasSuffix(pciID, MgmtFunc) { //mgmt pf
+		} else { //mgmt pf
 			// get mgmt instance
 			fname = path.Join(SysfsDevices, pciID, InstanceFile)
 			content, err := GetFileContent(fname)
 			if err != nil {
 				return nil, err
 			}
-			if len(devices) > 0 {
-				// xilinx fpga has mgmt PF func id 1, and user PF func id 0
-				// so walking the devices dir will get user PF first.
-				// better way to do this is using map instead of depending on
-				// the assumption mentioned above
-				device := &devices[len(devices)-1]
-				device.Nodes.Mgmt = MgmtPrefix + content
-			}
+			pairMap[DBD].Mgmt = MgmtPrefix + content
 		}
 
 	}
