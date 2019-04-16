@@ -9,9 +9,9 @@ More info about k8s device plugin, please refer to https://kubernetes.io/docs/co
 
 ## Prerequisites
 * All FPGAs have the DSA(shell) flashed already.
-* Xilinx FPGA device drivers installed through XRT on each node of the cluster where there are FPGA(s) inserted (drivers installed through xbinst would not work)
+* XRT(version is no older than 2018.3) installed on all worker nodes where there are FPGA(s) inserted
 * Container runtime in k8s is docker
-* k8s version = 1.12 (all tests have been running with this version. Old version may or may not work)
+* k8s version >= 1.12 (all tests have been running with version 1.12. Old version may or may not work)
 
 ## Quick start
 Assume you have a running k8s cluster already.
@@ -33,7 +33,7 @@ The Xilinx FPGA resources all have name with following format
 
 xilinx.com/fpga-dsatype-timestamp
 
-eg. xilinx.com/fpga-xilinx_kcu1500_dynamic_5_0-1512563160
+eg. xilinx.com/fpga-xilinx_u200_xdma_201820_1-1535712995
 
 The exact name of the FPGA resource on each node can be extracted from the output of
 ```
@@ -53,10 +53,10 @@ metadata:
 spec:
   containers:
   - name: my-pod
-    image: xilinxatg/fpga-verify:2018.10.29
+    image: xilinxatg/fpga-verify:latest
   resources:
     limits:
-      xilinx.com/fpga-xilinx_kcu1500_dynamic_5_0-1512563160: 2
+      xilinx.com/fpga-xilinx_u200_xdma_201820_1-1535712995: 1
   volumeMounts:
     - name: hostopt
       mountPath: /opt
@@ -78,19 +78,14 @@ $kubectl describe pod <pod_name>
 $kubectl exec -it mypod /bin/bash
 mypod>source /opt/xilxinx/xrt/setup.sh
 mypod>xbutil scan
-mypod>/tmp/verify.exe /tmp/1500/verify.xclbin -d 0
-mypod>/tmp/verify.exe /tmp/1500/verify.xclbin -d 1
+mypod>cd /tmp/alveo-u200/xilinx_u200_xdma_201830_1/test/
+mypod>./verify.exe ./verify.xclbin
 ```
-In this test case, the container image (xilinxatg/fgpa-verify:2018.10.29) has been pushed to docker hub. It can be publicly accessed
+In this test case, the container image (xilinxatg/fgpa-verify:latest) has been pushed to docker hub. It can be publicly accessed
 
 The image contains verify.xclbin for many types of FPGA, please select the type matching the FPGA resource the pod requests. 
 
 ## Known issues
 * When there are multiple types of FPGA on one node, the device plugin registers resource for each
-  specific type. The k8s device plugin framework has issue handling this case. I have filed issue report tracking this. https://github.com/kubernetes/kubernetes/issues/70350
-* When there are multiple FPGAs of same type on one node, if a pod requests just partial FPGAs(not
-  all), XRT 2018.2 release has issue – 'xbutil scan' still lists all FPGAs within container although
-  not all are assigned to the container, while the 'xbutil list' can only access the assigned
-  FPGA(s), so the index of the FPGAs gets messed and the app is confused to know which FPGA to use.
-  This has been fixed in XRT 2018.3 release
+  specific type. The k8s device plugin framework has issue handling this case. Issue report filed tracking this. https://github.com/kubernetes/kubernetes/issues/70350
 
