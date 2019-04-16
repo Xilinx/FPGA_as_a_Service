@@ -18,10 +18,10 @@ metadata:
 spec:
   containers:
   - name: mypod
-    image: xilinxatg/fpga-verify:2018.10.29
+    image: xilinxatg/fpga-verify:latest
     resources:
       limits:
-        xilinx.com/fpga-xilinx_vcu1525_dynamic_5_1-1521279439: 1
+        xilinx.com/fpga-xilinx_u200_xdma_201820_1-1535712995: 1
     volumeMounts:
       - name: hostopt
         mountPath: /opt
