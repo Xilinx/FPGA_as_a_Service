@@ -29,7 +29,7 @@ spec:
       - key: CriticalAddonsOnly
         operator: Exists
       containers:
-      - image: xilinxatg/k8s_fpga_device_plugin:latest
+      - image: xilinxatg/xilinx_k8s_fpga_plugin:latest
         name: xilinx-fpga-device-plugin
         securityContext:
           allowPrivilegeEscalation: false
