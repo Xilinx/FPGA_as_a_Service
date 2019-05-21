@@ -31,9 +31,9 @@ const (
 	UserPrefix     = "/dev/dri"
 	UserPFKeyword  = "drm"
 	DRMSTR         = "renderD"
+	ROMSTR         = "rom"
 	DSAverFile     = "VBNV"
 	DSAtsFile      = "timestamp"
-	DSAinfoFile    = "rom.u."
 	InstanceFile   = "instance"
 	MgmtFunc       = ".1"
 	UserFunc       = ".0"
@@ -56,33 +56,10 @@ type Device struct {
 	DBDF      string // this is for user pf
 	deviceID  string //devid of the user pf
 	Healthy   string
-	Nodes     Pairs
+	Nodes     *Pairs
 }
 
-func GetInstance(DBDF string) (string, error) {
-	strArray := strings.Split(DBDF, ":")
-	domain, err := strconv.ParseUint(strArray[0], 16, 16)
-	if err != nil {
-		return "", fmt.Errorf("strconv failed: %s\n", strArray[0])
-	}
-	bus, err := strconv.ParseUint(strArray[1], 16, 8)
-	if err != nil {
-		return "", fmt.Errorf("strconv failed: %s\n", strArray[1])
-	}
-	strArray = strings.Split(strArray[2], ".")
-	dev, err := strconv.ParseUint(strArray[0], 16, 8)
-	if err != nil {
-		return "", fmt.Errorf("strconv failed: %s\n", strArray[0])
-	}
-	fc, err := strconv.ParseUint(strArray[1], 16, 8)
-	if err != nil {
-		return "", fmt.Errorf("strconv failed: %s\n", strArray[1])
-	}
-	ret := domain*65536 + bus*256 + dev*8 + fc
-	return strconv.FormatUint(ret, 10), nil
-}
-
-func GetUserPF(dir string) (string, error) {
+func GetFileNameFromPrefix(dir string, prefix string) (string, error) {
 	userFiles, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return "", fmt.Errorf("Can't read folder %s \n", dir)
@@ -90,7 +67,7 @@ func GetUserPF(dir string) (string, error) {
 	for _, userFile := range userFiles {
 		fname := userFile.Name()
 
-		if !strings.HasPrefix(fname, DRMSTR) {
+		if !strings.HasPrefix(fname, prefix) {
 			continue
 		}
 		return fname, nil
@@ -187,19 +164,19 @@ func GetDevices() ([]Device, error) {
 		// so mgmt in Pair may be empty
 		if !IsMgmtPf(pciID) { //user pf
 			userDBDF := pciID
-			instance, err := GetInstance(userDBDF)
+			romFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), ROMSTR)
 			if err != nil {
 				return nil, err
 			}
 			// get dsa version
-			fname = path.Join(SysfsDevices, pciID, DSAinfoFile+instance, DSAverFile)
+			fname = path.Join(SysfsDevices, pciID, romFolder, DSAverFile)
 			content, err := GetFileContent(fname)
 			if err != nil {
 				return nil, err
 			}
 			dsaVer := content
 			// get dsa timestamp
-			fname = path.Join(SysfsDevices, pciID, DSAinfoFile+instance, DSAtsFile)
+			fname = path.Join(SysfsDevices, pciID, romFolder, DSAtsFile)
 			content, err = GetFileContent(fname)
 			if err != nil {
 				return nil, err
@@ -213,7 +190,7 @@ func GetDevices() ([]Device, error) {
 			}
 			devid := content
 			// get user PF node
-			userpf, err := GetUserPF(path.Join(SysfsDevices, pciID, UserPFKeyword))
+			userpf, err := GetFileNameFromPrefix(path.Join(SysfsDevices, pciID, UserPFKeyword), DRMSTR)
 			if err != nil {
 				return nil, err
 			}
@@ -230,7 +207,7 @@ func GetDevices() ([]Device, error) {
 				DBDF:      userDBDF,
 				deviceID:  devid,
 				Healthy:   healthy,
-				Nodes:     *pairMap[DBD],
+				Nodes:     pairMap[DBD],
 			})
 		} else { //mgmt pf
 			// get mgmt instance
@@ -241,7 +218,6 @@ func GetDevices() ([]Device, error) {
 			}
 			pairMap[DBD].Mgmt = MgmtPrefix + content
 		}
-
 	}
 	return devices, nil
 }
