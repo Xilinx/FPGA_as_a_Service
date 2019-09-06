@@ -42,6 +42,8 @@ const (
 	VendorFile     = "vendor"
 	DeviceFile     = "device"
 	XilinxVendorID = "0x10ee"
+	ADVANTECH_ID   = "0x13fe"
+	AWS_ID         = "0x1d0f"
 )
 
 type Pairs struct {
@@ -62,7 +64,7 @@ type Device struct {
 func GetFileNameFromPrefix(dir string, prefix string) (string, error) {
 	userFiles, err := ioutil.ReadDir(dir)
 	if err != nil {
-		return "", fmt.Errorf("Can't read folder %s \n", dir)
+		return "", fmt.Errorf("Can't read folder %s", dir)
 	}
 	for _, userFile := range userFiles {
 		fname := userFile.Name()
@@ -77,7 +79,7 @@ func GetFileNameFromPrefix(dir string, prefix string) (string, error) {
 
 func GetFileContent(file string) (string, error) {
 	if buf, err := ioutil.ReadFile(file); err != nil {
-		return "", fmt.Errorf("Can't read file %s \n", file)
+		return "", fmt.Errorf("Can't read file %s", file)
 	} else {
 		ret := strings.Trim(string(buf), "\n")
 		return ret, nil
@@ -88,22 +90,9 @@ func GetFileContent(file string) (string, error) {
 //as func 0. The func numbers of the 2 PFs are swapped after 2018.3 release.
 //The FPGA device driver in (and after) 2018.3 release creates sysfs file --
 //mgmt_pf and user_pf accordingly to reflect what a PF really is.
-//the k8s fpga plugin may manage a cluster with hybrid FPGAs (with old and new
-//DSAs), so we need to have a workaround here to distinguish user and mgmt PFs.
-//the logic is as follows:
-//if (pci func is 1) { //it may be mgmt func of old dsa or user func of new dsa
-//    if (there is no user_pf file) { // old dsa
-//        this is mgmt func
-//    }
-//} else { // it may be user func of old dsa or mgmt func of new dsa
-//    if (there exists mgmt_pf file) { // new dsa
-//        this is mgmt func
-//    }
-//}
-//TODO: In the future, an API should be introduced in xrt so that the plugin
-//does not need to know the hardware and low level software changes.
-//But even with an API, we still need to handle old DSA & XRT. So the workaround
-//is still necessary. Sigh...
+//
+//The plugin will rely on this info to determine whether the a entry is mgmtPF,
+//userPF, or none. This also means, it will not support 2018.2 any more.
 func FileExist(fname string) bool {
 	if _, err := os.Stat(fname); err != nil {
 		if os.IsNotExist(err) {
@@ -114,19 +103,13 @@ func FileExist(fname string) bool {
 }
 
 func IsMgmtPf(pciID string) bool {
-	if strings.HasSuffix(pciID, MgmtFunc) {
-		fname := path.Join(SysfsDevices, pciID, UserFile)
-		if !FileExist(fname) {
-			return true
-		}
-		return false
-	} else {
-		fname := path.Join(SysfsDevices, pciID, MgmtFile)
-		if FileExist(fname) {
-			return true
-		}
-		return false
-	}
+	fname := path.Join(SysfsDevices, pciID, MgmtFile)
+	return FileExist(fname)
+}
+
+func IsUserPf(pciID string) bool {
+	fname := path.Join(SysfsDevices, pciID, UserFile)
+	return FileExist(fname)
 }
 
 func GetDevices() ([]Device, error) {
@@ -134,7 +117,7 @@ func GetDevices() ([]Device, error) {
 	pairMap := make(map[string]*Pairs)
 	pciFiles, err := ioutil.ReadDir(SysfsDevices)
 	if err != nil {
-		return nil, fmt.Errorf("Can't read folder %s \n", SysfsDevices)
+		return nil, fmt.Errorf("Can't read folder %s", SysfsDevices)
 	}
 
 	for _, pciFile := range pciFiles {
@@ -145,7 +128,9 @@ func GetDevices() ([]Device, error) {
 		if err != nil {
 			return nil, err
 		}
-		if strings.EqualFold(vendorID, XilinxVendorID) != true {
+		if strings.EqualFold(vendorID, XilinxVendorID) != true &&
+			strings.EqualFold(vendorID, AWS_ID) != true &&
+			strings.EqualFold(vendorID, ADVANTECH_ID) != true {
 			continue
 		}
 
@@ -162,7 +147,7 @@ func GetDevices() ([]Device, error) {
 		// For containers deployed on top of VM, there may be only user PF
 		// available(mgmt PF is not assigned to the VM)
 		// so mgmt in Pair may be empty
-		if !IsMgmtPf(pciID) { //user pf
+		if IsUserPf(pciID) { //user pf
 			userDBDF := pciID
 			romFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), ROMSTR)
 			if err != nil {
@@ -209,7 +194,7 @@ func GetDevices() ([]Device, error) {
 				Healthy:   healthy,
 				Nodes:     pairMap[DBD],
 			})
-		} else { //mgmt pf
+		} else if IsMgmtPf(pciID) { //mgmt pf
 			// get mgmt instance
 			fname = path.Join(SysfsDevices, pciID, InstanceFile)
 			content, err := GetFileContent(fname)

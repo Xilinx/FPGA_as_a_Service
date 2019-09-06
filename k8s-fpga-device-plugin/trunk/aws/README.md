@@ -1,5 +1,11 @@
 # aws_k8s_fpga_plugin
 
+## Note
+
+The FPGA plugin in this folder is only for AWS running XRT prior 2019.2. In XRT 2019.2,
+the normal plugin in the parent folder works also for AWS, and there is no limitation
+mentioned below for this plugin.
+
 ## About
 
 This kubernetes FPGA device plugin is created for cluster running on aws F1 nodes.
