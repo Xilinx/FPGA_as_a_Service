@@ -29,6 +29,7 @@ const (
 	SysfsDevices   = "/sys/bus/pci/devices"
 	MgmtPrefix     = "/dev/xclmgmt"
 	UserPrefix     = "/dev/dri"
+	QdmaPrefix     = "/dev/xfpga/dma.qdma.u"
 	UserPFKeyword  = "drm"
 	DRMSTR         = "renderD"
 	ROMSTR         = "rom"
@@ -49,6 +50,7 @@ const (
 type Pairs struct {
 	Mgmt string
 	User string
+	Qdma string
 }
 
 type Device struct {
@@ -59,6 +61,29 @@ type Device struct {
 	deviceID  string //devid of the user pf
 	Healthy   string
 	Nodes     *Pairs
+}
+
+func GetInstance(DBDF string) (string, error) {
+	strArray := strings.Split(DBDF, ":")
+	domain, err := strconv.ParseUint(strArray[0], 16, 16)
+	if err != nil {
+		return "", fmt.Errorf("strconv failed: %s\n", strArray[0])
+	}
+	bus, err := strconv.ParseUint(strArray[1], 16, 8)
+	if err != nil {
+		return "", fmt.Errorf("strconv failed: %s\n", strArray[1])
+	}
+	strArray = strings.Split(strArray[2], ".")
+	dev, err := strconv.ParseUint(strArray[0], 16, 8)
+	if err != nil {
+		return "", fmt.Errorf("strconv failed: %s\n", strArray[0])
+	}
+	fc, err := strconv.ParseUint(strArray[1], 16, 8)
+	if err != nil {
+		return "", fmt.Errorf("strconv failed: %s\n", strArray[1])
+	}
+	ret := domain*65536 + bus*256 + dev*8 + fc
+	return strconv.FormatUint(ret, 10), nil
 }
 
 func GetFileNameFromPrefix(dir string, prefix string) (string, error) {
@@ -139,6 +164,7 @@ func GetDevices() ([]Device, error) {
 			pairMap[DBD] = &Pairs{
 				Mgmt: "",
 				User: "",
+				Qdma: "",
 			}
 		}
 
@@ -181,6 +207,17 @@ func GetDevices() ([]Device, error) {
 			}
 			userNode := path.Join(UserPrefix, userpf)
 			pairMap[DBD].User = userNode
+
+			//get qdma device node if it exists
+			instance, err := GetInstance(userDBDF)
+			if err != nil {
+				return nil, err
+			}
+
+			QdmaNode := QdmaPrefix + instance
+			if FileExist(QdmaNode) {
+				pairMap[DBD].Qdma = QdmaNode
+			}
 
 			//TODO: check temp, power, fan speed etc, to give a healthy level
 			//so far, return Healthy

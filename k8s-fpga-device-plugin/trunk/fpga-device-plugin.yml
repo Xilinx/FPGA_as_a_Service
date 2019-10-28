@@ -13,11 +13,17 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 apiVersion: extensions/v1beta1
+#if run with k8s v1.16+, replace the above line with
+#apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: fpga-device-plugin-daemonset
   namespace: kube-system
 spec:
+#if run with k8s v1.16+, these 3 lines are also required
+#selector:
+#    matchLabels:
+#      name: xilinx-fpga-device-plugin
   template:
     metadata:
       annotations:
