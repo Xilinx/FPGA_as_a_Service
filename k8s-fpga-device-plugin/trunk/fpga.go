@@ -29,15 +29,14 @@ const (
 	SysfsDevices   = "/sys/bus/pci/devices"
 	MgmtPrefix     = "/dev/xclmgmt"
 	UserPrefix     = "/dev/dri"
-	QdmaPrefix     = "/dev/xfpga/dma.qdma.u"
+	QdmaPrefix     = "/dev/xfpga"
+	QDMASTR        = "dma.qdma.u"
 	UserPFKeyword  = "drm"
 	DRMSTR         = "renderD"
 	ROMSTR         = "rom"
 	DSAverFile     = "VBNV"
 	DSAtsFile      = "timestamp"
 	InstanceFile   = "instance"
-	MgmtFunc       = ".1"
-	UserFunc       = ".0"
 	MgmtFile       = "mgmt_pf"
 	UserFile       = "user_pf"
 	VendorFile     = "vendor"
@@ -214,9 +213,13 @@ func GetDevices() ([]Device, error) {
 				return nil, err
 			}
 
-			QdmaNode := QdmaPrefix + instance
-			if FileExist(QdmaNode) {
-				pairMap[DBD].Qdma = QdmaNode
+			qdmaFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), QDMASTR)
+			if err != nil {
+				return nil, err
+			}
+
+			if qdmaFolder != "" {
+				pairMap[DBD].Qdma = path.Join(QdmaPrefix, QDMASTR+instance)
 			}
 
 			//TODO: check temp, power, fan speed etc, to give a healthy level
