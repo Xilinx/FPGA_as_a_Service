@@ -184,7 +184,7 @@ The image contains verify.xclbin for many types of FPGA, please select the type 
 
 ## Known issues
 * When there are multiple types of FPGA on one node, the device plugin registers resource for each
-  specific typei, but the k8s device plugin framework has issue handling this case. 
+  specific type, but the k8s device plugin framework has issue handling this case. 
   Issue report filed tracking this. https://github.com/kubernetes/kubernetes/issues/70350
 
 ## Contact
