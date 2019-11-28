@@ -124,15 +124,15 @@ Here is an example of the yaml file which defines the pod to be deployed.
 In the yaml file, the docker image, which has been uploaded to a docker registry, should be specified.
 What should be specified as well is, the type and number of FPGA resource being used by the pod.
 ```
-$cat mypod.yaml
+$cat dp-pod.yaml
 
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-pod
+  name: mypod
 spec:
   containers:
-  - name: my-pod
+  - name: mypod
     image: xilinxatg/fpga-verify:latest
   resources:
     limits:
@@ -144,7 +144,7 @@ spec:
 Deploy the pod now
 
 ```
-$kubectl create -f mypod.yaml
+$kubectl create -f dp-pod.yaml
 ```
 #### Check status of the deployed pod
 ```
@@ -152,13 +152,13 @@ $kubectl get pod
 
 ...snippet...
 
-my-pod                           1/1     Running   0          7s
+mypod                           1/1     Running   0          7s
 
 ...snippet...
 
 ```
 ```
-$kubectl describe pod my-pod
+$kubectl describe pod mypod
 
 ...snippet...
 
@@ -172,7 +172,7 @@ Limits:
 ```
 #### Run hello world in the pod
 ```
-$kubectl exec -it my-pod /bin/bash
+$kubectl exec -it mypod /bin/bash
 my-pod>source /opt/xilxinx/xrt/setup.sh
 my-pod>xbutil scan
 my-pod>cd /tmp/alveo-u200/xilinx_u200_xdma_201830_1/test/
