@@ -187,5 +187,5 @@ The image contains verify.xclbin for many types of FPGA, please select the type 
   specific type, but the k8s device plugin framework has issue handling this case. 
   Issue report filed tracking this. https://github.com/kubernetes/kubernetes/issues/70350
 
-## Contact
+## Author
 Brian Xu(brianx@xilinx.com)
