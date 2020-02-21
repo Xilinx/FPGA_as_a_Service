@@ -15,20 +15,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fpga-server
+  name: accelator-pod
 spec:
   selector:
     matchLabels:
-      app: fpga-server
+      app: accelator-pod
   replicas: 1
   template:
     metadata:
       labels:
-        app: fpga-server
+        app: accelator-pod
     spec:
       containers:
-      - name: fpga-server
-        image: memo40k/k8s:fpgapod
+      - name: accelator-pod
+        image: memo40k/k8s:accelator_pod
         imagePullPolicy: IfNotPresent
         resources:
           limits:
@@ -45,7 +45,7 @@ metadata:
   name: fpga-server-svc
 spec:
   selector:
-    app: fpga-server
+    app: accelator-pod
   clusterIP: 10.96.59.3
   ports:
   - name: server
@@ -53,3 +53,4 @@ spec:
     port: 8010
   type: NodePort
   externalTrafficPolicy: Local
+

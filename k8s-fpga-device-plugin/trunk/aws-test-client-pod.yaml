@@ -15,11 +15,12 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: testpod
+  name: test-client-pod
 spec:
   containers:
-  - name: testpod
-    image: memo40k/k8s:testpod
+  - name: test-client-pod
+    image: memo40k/k8s:test_client_pod
     command: ["/bin/sh"]
     args: ["-c", "while true; do echo hello; sleep 5;done;"]
   dnsPolicy: ClusterFirst
+
