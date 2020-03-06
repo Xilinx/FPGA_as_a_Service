@@ -1,0 +1,17 @@
+#!/bin/sh
+ORG_PATH="github.com/xilinx"
+REPO_PATH="${ORG_PATH}/k8s-fpga-device-plugin"
+
+export GO15VENDOREXPERIMENT=1
+export GOBIN=${PWD}/bin
+
+FMT="*.go"
+echo "Checking gofmt..."
+fmtRes=$(gofmt -l $FMT)
+if [ -n "${fmtRes}" ]; then
+    echo -e "gofmt checking failed:\n${fmtRes}"
+    exit 255
+fi
+
+echo "Building plugins"
+go install "$@" ${REPO_PATH}
