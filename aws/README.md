@@ -1,4 +1,10 @@
-# aws_k8s_fpga_plugin
+# AWS Kubernetes FPGA Plugin
+
+## Note
+
+The FPGA plugin in this folder is only for AWS running XRT prior 2019.2. In XRT 2019.2,
+the normal plugin in the parent folder works also for AWS, and there is no limitation
+mentioned below for this plugin.
 
 ## About
 
@@ -25,18 +31,48 @@ the user pods have to be deployed in 'privileged' mode.
 
 ## Quick start
 
-Once the kubernetes cluster is setup,
+Once the kubernetes cluster and XRT is being setup on aws, you can follow following step to install and test the kubernetes plugin.
 
-### Deploy the plugin as daemonset
+### Step 1: Deploy the plugin as daemonset
+Download plugin source:
 ```
-$kubectl create -f aws-fpga-device-plugin.yaml
+#git clone  https://github.com/Xilinx/FPGA_as_a_Service.git
 ```
-### Example to deploy a user pod
+Deploy FPGA device plugin as daemonset:  
 ```
-$kubectl create -f mypod.yaml
+#kubectl create -f ./FPGA_as_a_Service/k8s-fpga-device-plugin/trunk/fpga-device-plugin.yml 
+``` 
+To check the status of daemonset:  
+```
+#kubectl get pod -n kube-system  
+```
+Get node name:  
+```
+#kubectl get node  
+```
+Check FPGA resource in the worker node:  
+```
+#kubectl describe node nodename  
+```
+You should get the FPGA resources name under the pods information.
+
+### Step 2: deploy a user pod
+```
+#kubectl create -f mypod.yaml
 ```
 
-More details, please refer to the README file of the Xilinx FPGA plugin
+For more details, please refer to the README file of the Xilinx FPGA plugin
+### Step 3: Run the test in pod
+After user pod status turns to Running, run hello world in the pod:  
+```
+#kubectl exec -it my-pod /bin/bash  
+#my-pod>source /opt/xilinx/xrt/setup.sh  
+#my-pod>export INTERNAL_BUILD=1  
+#my-pod>xbutil scan  
+#my-pod>cd /opt/test/  
+#my-pod>./helloworld vector_addition_hw.awsxclbin
+```
+**Note:**  Need to set the INTERNAL_BUILD=1 if xbutil complain the version not match:  
 
 ## Build plugin binary
 
@@ -46,13 +82,3 @@ More details, please refer to the README file of the Xilinx FPGA plugin
 
 The output is the binary 'aws-fpga-device-plugin' in the current folder
 
-## Build plugin docker image
-
-```
-#docker build -t name_of_the_image .
-```
-There is a docker image built already and pushed to dockerhub
-
-```
-xilinxatg/aws_k8s_fpga_plugin:06272019
-```
