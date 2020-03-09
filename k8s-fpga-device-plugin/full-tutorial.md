@@ -131,7 +131,7 @@ gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cl
 
 #### Step 2: Set SELinux in permissive mode (effectively disabling it)
 
-`#sudo setenforce 0  `
+`#sudo setence 0  `
 
 `#sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config `
 
@@ -229,7 +229,9 @@ For other version, please refer [https://github.com/coreos/flannel](https://gith
 
 ## 4. Install Xilinx Runtime
 
-Download XRT from github, build and install it.
+Download XRT from github, build and install it with following command line.
+
+For bare-metal machine you can directly install it with "apt install" and "yum install". Here we mainly introduce how to install XRT on AWS.
 
 ### Setup tool
 
@@ -299,7 +301,7 @@ Step 1: down plugin source
 
 Deploy FPGA device plugin as daemonset:  
 
-`#kubectl create -f ./FPGA_as_a_Service/k8s-fpga-device-plugin/trunk/fpga-device-plugin.yml `
+`#kubectl create -f ./FPGA_as_a_Service/k8s-fpga-device-plugin/fpga-device-plugin.yml `
 
 To check the status of daemonset:  
 
@@ -365,14 +367,14 @@ Step 1: Login to your Docker Hub account
 
 #### Step 2: Create a docker file
 
-Here we will use our github folder [**docker/build_fpga_server_docker**](https://github.com/Xilinx/FPGA_as_a_Service/tree/master/k8s-fpga-device-plugin/trunk/docker/build_fpga_server_docker)  as an example. In this folder, **"server"** is a file folder that is to be added into our docker image. It has four files:
+Here we will use our github folder [**docker/build_fpga_server_docker**](https://github.com/Xilinx/FPGA_as_a_Service/tree/master/k8s-fpga-device-plugin/docker/build_fpga_server_docker)  as an example. In this folder, **"server"** is a file folder that is to be added into our docker image. It has four files:
 
 |File | Description|
 |---|---|
-| [fpga_algo.awsxclbin](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/trunk/docker/build_fpga_server_docker/server/fpga_algo.awsxclbin "fpga_algo.awsxclbin")| This is the xclbin of the algorithm implemented on FPGA.|
-| [fpga_host_exe](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/trunk/docker/build_fpga_server_docker/server/fpga_host_exe "fpga_host_exe") | This is the host executable that downloads the xclbin to FPGA and interacts with the FPGA. |
-|  [fpga_server.py](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/trunk/docker/build_fpga_server_docker/server/fpga_server.py "fpga_server.py")|This is a representative server program that calls the host executable and has ability to receive command from a client. One can merge this with host executable into one single server program in C++.|
-|   [run.sh](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/trunk/docker/build_fpga_server_docker/server/run.sh "run.sh")  |  This sets environment and calls  | fpga_server.py.
+| [fpga_algo.awsxclbin](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/docker/build_fpga_server_docker/server/fpga_algo.awsxclbin "fpga_algo.awsxclbin")| This is the xclbin of the algorithm implemented on FPGA.|
+| [fpga_host_exe](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/docker/build_fpga_server_docker/server/fpga_host_exe "fpga_host_exe") | This is the host executable that downloads the xclbin to FPGA and interacts with the FPGA. |
+|  [fpga_server.py](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/docker/build_fpga_server_docker/server/fpga_server.py "fpga_server.py")|This is a representative server program that calls the host executable and has ability to receive command from a client. One can merge this with host executable into one single server program in C++.|
+|   [run.sh](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/docker/build_fpga_server_docker/server/run.sh "run.sh")  |  This sets environment and calls  | fpga_server.py.
 
 You can add any number of folders with any contents you need for your server to work.
 
@@ -413,13 +415,13 @@ To test the docker image you just created, run the above. You should see the fol
 
 #### Step 5: Create a docker image for client
 
-Please repeat the steps 2 to 4 with your desired executable contents for the client to create another docker image called  **test_client_pod**. You can use [build_test_client_docker](https://github.com/Xilinx/FPGA_as_a_Service/tree/master/k8s-fpga-device-plugin/trunk/docker/build_test_client_docker)  as an example.
+Please repeat the steps 2 to 4 with your desired executable contents for the client to create another docker image called  **test_client_pod**. You can use [build_test_client_docker](https://github.com/Xilinx/FPGA_as_a_Service/tree/master/k8s-fpga-device-plugin/docker/build_test_client_docker)  as an example.
 
 
 
 ### Verify docker image
 
-Use the yaml files: [aws-accelator-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/trunk/aws-accelator-pod.yaml)  and [aws-test-client-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/trunk/aws-test-client-pod.yaml)  to create accelerator and client pods respectively.
+Use the yaml files: [aws-accelator-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/aws-accelator-pod.yaml)  and [aws-test-client-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/aws-test-client-pod.yaml)  to create accelerator and client pods respectively.
 
 
 
@@ -465,5 +467,3 @@ kubernetes       ClusterIP     10.96.0.1        <none>      443/TCP       14d
 **Note:**
 
 **If the status of the accelerator pod shows as pending, please check whether the card is already assigned to another running pod. If so, please delete the running pod and recreate the accelerator pod.**
-
-
