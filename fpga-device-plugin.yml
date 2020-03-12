@@ -12,12 +12,18 @@
 #WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #See the License for the specific language governing permissions and
 #limitations under the License.
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+#if run with k8s v1.16-, replace the above line with
+#apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
   name: fpga-device-plugin-daemonset
   namespace: kube-system
 spec:
+#if run with k8s v1.16-, the following 3 lines are not required
+  selector:
+    matchLabels:
+      name: xilinx-fpga-device-plugin
   template:
     metadata:
       annotations:
