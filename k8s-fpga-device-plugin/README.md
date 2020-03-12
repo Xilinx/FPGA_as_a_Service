@@ -5,7 +5,12 @@ The Xilinx FPGA device plugin for Kubernetes is a [Daemonset]([https://kubernete
 * Discover the FPGAs inserted in each node of the cluster and expose information about FPGA such as number of FPGA, Shell (Target Platform) type and etc.
 * Run FPGA accessible containers in the k8s cluster
 
-For more detailed information about use Docker and Kubernetes:
+
+If you already have an docker and kubernetes environment, you can follow the [Quick Start](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/quickstart.md) to test k8s-fpga-device-plugin on your own cluster. 
+You can check the [Full Tutorial](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/full-tutorial.md) if you want to build docker, kuberetes cluster environment and test k8s-fpga-device-plugin from the beginning.
+
+
+For detailed information about k8s-fpga-device-plugin, Docker and Kubernetes, you can renferece following links:
 
 
 |Detailed Info               | Description           |
