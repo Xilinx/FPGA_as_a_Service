@@ -1,6 +1,6 @@
 # Xilinx FPGA Plugin Deployment Full Tutorial
 
-This documentation describes how to deploy FGPA plugin with Docker and Kubernetes on CentOS and Ubuntu.
+This documentation describes how to deploy FPGA plugin with Docker and Kubernetes on CentOS and Ubuntu.
 ## 1. Install Docker
 
 ### Prerequisites
