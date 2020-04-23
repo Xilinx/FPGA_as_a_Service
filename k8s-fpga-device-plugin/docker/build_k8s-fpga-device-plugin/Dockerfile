@@ -27,7 +27,7 @@ RUN mkdir -p ${GOPATH}/bin
 
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-COPY . .
+COPY ./src .
 
 RUN ./build
 
