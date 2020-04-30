@@ -21,12 +21,14 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 const (
 	SysfsDevices   = "/sys/bus/pci/devices"
+	DTBDeviceModel = "/proc/device-tree/model"
 	MgmtPrefix     = "/dev/xclmgmt"
 	UserPrefix     = "/dev/dri"
 	UserPFKeyword  = "drm"
@@ -44,6 +46,10 @@ const (
 	XilinxVendorID = "0x10ee"
 	ADVANTECH_ID   = "0x13fe"
 	AWS_ID         = "0x1d0f"
+	//Zynq Supported boards: https://xilinx.github.io/XRT/2019.2/html/platforms.html
+	//DTB model name pattern: https://github.com/Xilinx/linux-xlnx/tree/master/arch/arm64/boot/dts/xilinx
+	ZynqRegex      = "ZynqMP"
+	ZynqModelRegex = "ZCU1(9|0[246])"
 )
 
 type Pairs struct {
@@ -113,6 +119,13 @@ func IsUserPf(pciID string) bool {
 }
 
 func GetDevices() ([]Device, error) {
+	//Check if we are on a Zynq board.
+	modelName, err := GetFileContent(DTBDeviceModel)
+	if err == nil {
+		if strings.Contains(modelName, ZynqRegex) {
+			return GetDevicesEdge(modelName)
+		}
+	}
 	var devices []Device
 	pairMap := make(map[string]*Pairs)
 	pciFiles, err := ioutil.ReadDir(SysfsDevices)
@@ -204,6 +217,45 @@ func GetDevices() ([]Device, error) {
 			pairMap[DBD].Mgmt = MgmtPrefix + content
 		}
 	}
+	return devices, nil
+}
+func GetDevicesEdge(modelName string) ([]Device, error) {
+	var devices []Device
+	devid := strconv.Itoa(len(devices) + 1)
+	zynqRegex := regexp.MustCompile(ZynqRegex)
+	modelRegex := regexp.MustCompile(ZynqModelRegex)
+	board := zynqRegex.FindString(modelName)
+	model := modelRegex.FindString(modelName)
+	pairMap := make(map[string]*Pairs)
+	pairMap[devid] = &Pairs{
+		Mgmt: "",
+		User: "",
+	}
+	//TODO: check temp, power, fan speed etc, to give a healthy level
+	//so far, return Healthy
+	healthy := pluginapi.Healthy
+	// get DRM render node
+	drm, err := GetFileNameFromPrefix(UserPrefix, DRMSTR)
+	if err != nil {
+		return nil, err
+	}
+	userNode := path.Join(UserPrefix, drm)
+	pairMap[devid].User = userNode
+
+	//TODO: check for more devices in edge boards, as for now
+	//in XRT number of devices is hardcoded to 1. See:
+	//XRT/src/runtime_src/core/edge/tools/xbutil/xbutil.cpp:402
+	//For shellver and timestamp we are using the board and model
+	//to be able to orchestrate on different boards.
+	devices = append(devices, Device{
+		index:     strconv.Itoa(len(devices) + 1),
+		DBDF:      devid,
+		deviceID:  devid,
+		shellVer:  board,
+		timestamp: model,
+		Healthy:   healthy,
+		Nodes:     pairMap[devid],
+	})
 	return devices, nil
 }
 
