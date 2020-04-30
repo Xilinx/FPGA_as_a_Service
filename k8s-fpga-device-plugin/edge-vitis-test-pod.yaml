@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vitis-test-pod
+spec:
+  containers:
+  - name: vitis-test-pod
+    image: paroque28/wrl_vitis_ai_resnet:latest
+    imagePullPolicy: IfNotPresent
+    resources:
+      limits:
+        xilinx.com/fpga-ZynqMP-ZCU102: 1
+    command: ["resnet50", "/opt/Vitis-AI/img/greyfox-672194.JPEG"]
