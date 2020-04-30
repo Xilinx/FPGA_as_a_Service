@@ -38,7 +38,7 @@ spec:
       - image: xilinxatg/xilinx_k8s_fpga_plugin:latest
         name: xilinx-fpga-device-plugin
         securityContext:
-          allowPrivilegeEscalation: false
+          privileged: true
           capabilities:
             drop: ["ALL"]
         volumeMounts:
