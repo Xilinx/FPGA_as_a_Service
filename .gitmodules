@@ -1,0 +1,8 @@
+[submodule "Containerization"]
+	path = Containerization
+	url = https://github.com/Xilinx/Containerization.git
+	branch = master
+[submodule "Xilinx_Base_Runtime"]
+	path = Xilinx_Base_Runtime
+	url = https://github.com/Xilinx/Xilinx_Base_Runtime.git
+	branch = master
