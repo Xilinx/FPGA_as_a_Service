@@ -5,3 +5,5 @@ This repository will host FPGA_as_a_Service related projects.
 | Name                   |  Description |
 |------------------------|-------------------|
 | [k8s-fpga-device-plugin](k8s-fpga-device-plugin) | Daemonset deployed on the kubernetes to discover FPGAs inserted in each node and run FPGA accessible containers in the k8s cluster |
+| [Xilinx Base Runtime](https://github.com/Xilinx/Xilinx_Base_Runtime) | This project maintains unified Docker images with XRT (Xilinx runtime) preinstalled and provides scripts to setup and flash the Alveo cards. |
+| [Containerization](https://github.com/Xilinx/Containerization) | This project provides script to build Docker Application (image) for multiple cloud vendor: Nimbix, AWS and Azure. |
