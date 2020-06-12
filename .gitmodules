@@ -6,3 +6,6 @@
 	path = Xilinx_Base_Runtime
 	url = https://github.com/Xilinx/Xilinx_Base_Runtime.git
 	branch = master
+[submodule "XRM"]
+	path = XRM
+	url = https://github.com/Xilinx/XRM.git
