@@ -341,6 +341,19 @@ func (m *FPGADevicePluginServer) Allocate(ctx context.Context, req *pluginapi.Al
 				ContainerPath: dev.Nodes.User,
 				ReadOnly:      false,
 			})
+			// if this device supports qdma, assign the qdma node to pod too
+			if dev.Nodes.Qdma != "" {
+				cres.Devices = append(cres.Devices, &pluginapi.DeviceSpec{
+					HostPath:      dev.Nodes.Qdma,
+					ContainerPath: dev.Nodes.Qdma,
+					Permissions:   "rwm",
+				})
+				cres.Mounts = append(cres.Mounts, &pluginapi.Mount{
+					HostPath:      dev.Nodes.Qdma,
+					ContainerPath: dev.Nodes.Qdma,
+					ReadOnly:      false,
+				})
+			}
 		}
 		response.ContainerResponses = append(response.ContainerResponses, cres)
 	}
