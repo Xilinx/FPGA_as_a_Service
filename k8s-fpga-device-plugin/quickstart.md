@@ -167,8 +167,5 @@ In this test case, the container image (xilinxatg/fgpa-verify:latest) has been p
 
 The image contains verify.xclbin for many types of FPGA, please select the type matching the FPGA resource the pod requests.
 
-## Known issues
-* When there are multiple types of FPGA on one node, the device plugin registers resource for each
-  specific type, but the k8s device plugin framework has issue handling this case.
-  Issue report filed tracking this. https://github.com/kubernetes/kubernetes/issues/70350
+
 
