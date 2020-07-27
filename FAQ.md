@@ -1,7 +1,7 @@
 # FAQ  
 **Question: When I reserve a machine looking for a U250, I am assigned a node with a U250, but from within the pod, I can see the U250 and also the U280 (which is also present on that node). Is this intended behavior?**
 
- **Answer:** This is an known issue of Kubernetes state**d in readme of fpga plugin. The problem is multiple types of FGPA cards or Shell on one node can not be handled by Kubernetes. You can Check the following link for detailed info: [https://github.com/kubernetes/kubernetes/issues/70350](https://github.com/kubernetes/kubernetes/issues/70350)
+ **Answer:** This issue has been fixed form kubernetes version 1.17, if you are using previous versions of kubernetes you can try updating your kubernetes cluster to the latest version. The previous problem is multiple types of FGPA cards or Shell on one node can not be handled by Kubernetes. You can Check the following link for detailed info: [https://github.com/kubernetes/kubernetes/issues/70350](https://github.com/kubernetes/kubernetes/issues/70350)
 
 **Question: When testing Vitis in AWS FPGA environment. There is an AFI agfi-069ddd533a748059b which is first loaded when I do the systemctl start mpd for the very first time when I boot the machine. Then, at the end inside my-pod when running the ./helloworld vector_addition_hw.awsxclbin, this time is the one associated to the vector_addition_hw.awsxclbin, AFI agfi-2 is loaded, and the one effectively used. Is both have “vector_addition_hw” in their name?**
 

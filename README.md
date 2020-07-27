@@ -26,7 +26,7 @@ For detailed information about k8s-fpga-device-plugin, Docker and Kubernetes, yo
 * All FPGAs have the Shell(Target Platform) flashed already.
 * XRT(version is no older than 2018.3) installed on all worker nodes where there are FPGA(s) inserted
 * Container runtime in k8s is docker
-* k8s version >= 1.12 (all tests have been running with version 1.12. Old version may or may not work)
+* k8s version >= 1.17 (all tests have been running with version 1.17. Old version may or may not work)
 
 ## Contact
 Email: k8s_dev@xilinx.com
