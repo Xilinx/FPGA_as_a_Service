@@ -44,6 +44,7 @@ const (
 	XilinxVendorID = "0x10ee"
 	ADVANTECH_ID   = "0x13fe"
 	AWS_ID         = "0x1d0f"
+	AristaVendorID = "0x3475"
 )
 
 type Pairs struct {
@@ -153,6 +154,7 @@ func GetDevices() ([]Device, error) {
 			return nil, err
 		}
 		if strings.EqualFold(vendorID, XilinxVendorID) != true &&
+			strings.EqualFold(vendorID, AristaVendorID) != true &&
 			strings.EqualFold(vendorID, AWS_ID) != true &&
 			strings.EqualFold(vendorID, ADVANTECH_ID) != true {
 			continue
