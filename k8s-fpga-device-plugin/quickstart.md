@@ -161,7 +161,7 @@ $kubectl exec -it mypod /bin/bash
 my-pod>source /opt/xilinx/xrt/setup.sh
 my-pod>xbutil scan
 my-pod>cd /tmp/alveo-u200/xilinx_u200_xdma_201830_1/test/
-my-pod>./verify.exe ./verify.xclbin
+my-pod>./validate.exe ./verify.xclbin
 ```
 In this test case, the container image (xilinxatg/fgpa-verify:latest) has been pushed to docker hub. It can be publicly accessed
 
