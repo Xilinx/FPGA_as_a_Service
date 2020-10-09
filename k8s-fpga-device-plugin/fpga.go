@@ -18,12 +18,12 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 	"os"
 	"path"
 	"strconv"
 	"strings"
-
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
+	"time"
 )
 
 const (
@@ -178,8 +178,18 @@ func GetDevices() ([]Device, error) {
 		if IsUserPf(pciID) { //user pf
 			userDBDF := pciID
 			romFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), ROMSTR)
+			count := 0
 			if err != nil {
 				return nil, err
+			}
+			for romFolder == "" {
+				if count >= 3 {
+					break
+				}
+				time.Sleep(3 * time.Second)
+				romFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), ROMSTR)
+				fmt.Println(romFolder, err)
+				count += 1
 			}
 			// get dsa version
 			fname = path.Join(SysfsDevices, pciID, romFolder, DSAverFile)
