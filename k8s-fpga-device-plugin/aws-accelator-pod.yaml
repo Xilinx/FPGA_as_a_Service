@@ -36,7 +36,7 @@ spec:
         ports:
         - name: server
           containerPort: 8010
-        command: ["/opt/test/run.sh"]
+        command: ["/opt/xilinx/k8s/server/run.sh"]
       dnsPolicy: ClusterFirst
 ---
 apiVersion: v1
