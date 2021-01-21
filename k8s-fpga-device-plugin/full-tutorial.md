@@ -1,26 +1,33 @@
 # Xilinx FPGA Plugin Deployment Full Tutorial
 
-This documentation describes how to deploy FPGA plugin with Docker and Kubernetes on CentOS and Ubuntu.
+This documentation describes how to deploy FPGA plugin with Docker and Kubernetes on RedHat, CentOS and Ubuntu.
 ## 1. Install Docker
 
 ### Prerequisites
 
 CentOS:
 
--   A maintained/supported version of CentOS
+-   A maintained/supported version of CentOS 7+
 -   A user account with sudo privileges
 -   Terminal access
 -   CentOS Extras repository – this is enabled by default, but if yours has been disabled you’ll need to re-enable it
 -   Software package installer yum
 
+RedHat:
+
+-   A maintained/supported version of Redhat 7+ (We tested with RHEL 7.8)
+-   A user account with sudo privileges
+-   Terminal access
+-   Software package installer yum
+
 Ubuntu:
 
--   Ubuntu operating system
+-   Ubuntu operating system 16.04+
 -   A user account with sudo privileges
 -   Command-line/terminal
 -   Docker software repositories (optional)
 
-### Installing Docker on CentOS 7 With Yum
+### Installing Docker on CentOS 7 / RedHat 7.8 With Yum
 
 #### Step 1: Update Docker Package Database
 
@@ -30,7 +37,7 @@ Ubuntu:
 
 `#sudo yum install -y yum-utils device-mapper-persistent-data lvm2`
 
-#### Step 3: Add the Docker Repository to CentOS
+#### Step 3: Add the Docker Repository to CentOS / Redhat
 
 To install the  **edge**  or  **test**  versions of Docker, you need to add the Docker CE stable repository to your system. To do so, run the command:
 
@@ -40,7 +47,7 @@ A **stable** release is tested more thoroughly and has a slower update cycle. On
 
 **Note:** If you’re only going to use the stable release, don’t enable these extra repositories. The Docker installation process defaults to the latest version of Docker unless you specify otherwise. Leaving the stable repository enabled makes sure that you aren’t accidentally updating from a stable release to an edge release.
 
-#### Step 4: Install Docker On CentOS Using Yum
+#### Step 4: Install Docker On CentOS/Redhat Using Yum
 
 With everything set, you can finally move on to installing Docker on CentOS 7 by running:
 
@@ -111,7 +118,7 @@ Here is the referred document from Kubernetes:
 
 [https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
 
-### Installing kubeadm, kubelet and kubectl on CentOS
+### Installing kubeadm, kubelet and kubectl on CentOS / Redhat
 
 #### Step 1: Set kubernetes repo
 
@@ -176,11 +183,30 @@ To load it explicitly call
 #sudo apt-get install -y kubelet kubeadm kubectl
 #sudo apt-mark hold kubelet kubeadm kubectl
 ```
+
+**Note**:  
+If you want to install specified version of kubelet, kubeadm and kubectl. You can use following command to check and install available versions.
+```bash
+#sudo apt-get update && sudo apt-get install -y apt-transport-https curl
+#curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+#sudo apt-get update
+```
+Check available versions:
+```
+#sudo apt-cache policy kubeadm
+#sudo apt-cache policy kubelet
+#sudo apt-cache policy kubctl
+```
+Then you can install with specified versions:
+```
+#sudo apt-get install -y kubelet=1.18.9-00 kubeadm=1.18.9-00 kubectl=1.18.9-00
+#sudo apt-mark hold kubelet kubeadm kubectl
+```
 ## 3. Configure Cluster
 
-Here will just create **master** node and use it.
+Here will create **master** node and use it.
 
-### Disable swap
+### Disable swap (this step need to be done on all your nodes)
 
 `#sudo swapoff -a`
 
@@ -212,7 +238,6 @@ Adding environment variable in ~/.bash_porfile
 
 #### Step 2: configure flannel
 
-
 install flannel (for Kubernetes version 1.7+)  
 
 `#sysctl net.bridge.bridge-nf-call-iptables=1  `
@@ -225,7 +250,68 @@ For other version, please refer [https://github.com/coreos/flannel](https://gith
 
 `#sudo kubectl get pod -n kube-system -o wide`
 
-**NOTE**: If there is multiple AWS instances, then go ahead to create slave node on other instance and use "kubeadm join" to add the slave node into cluster.
+#### Step 4: Adding worker node (slave node)
+
+If there are multiple server machines or AWS instances you want to add into cluster as worker node, you need to follow our perivous step install matched version of kubectl kubeadm and kubelet. 
+
+Login to your master node, use following command to get your token command for join cluster:
+
+`kubeadm token create --print-join-command`
+
+You will get a output command like :
+
+`kubeadm join 192.168.54.128:6443 --token mg4o13.4ilr1oi605tj850w   --discovery-token-ca-cert-hash sha256:363b5b8525ddb86f4dc157f059e40c864223add26ef53d0cfc9becc3cbae8ad3`
+
+Using the output command on the worker node you want to add into the cluster. And check result on master node with command:
+
+`kubectl get node`
+
+#### Step 5: Configure pulling from private dockerhub repository (Optional)
+
+If you want to pulling from a private dockerhub repository or using a private registry, there are three potential ways to do it.
+
+You can also check k8s document for more detialed information: https://kubernetes.io/docs/concepts/containers/images/
+
+##### 1) Configuring nodes to authenticate to a private registry
+If you run Docker on your nodes, you can configure the Docker container runtime to authenticate to a private container registry. This approach is suitable if you can control node configuration. Docker stores keys for private registries in the $HOME/.dockercfg or $HOME/.docker/config.json file. If you put the same file in the search paths {cwd of kubelet}/config.json, kubelet uses it as the credential provider when pulling images.
+
+Following command need to be run as root user on all nodes you need pulling images from a private repo:
+```
+docker login
+cp /root/.docker/config.json /var/lib/kubelet/
+```
+
+##### 2) Specifying imagePullSecrets on a Pod
+You can use following command to create a secret with a docker config:
+
+```
+kubectl create secret docker-registry REGISTRY_KEY_NAME \
+  --docker-server=DOCKER_REGISTRY_SERVER \
+  --docker-username=DOCKER_USER \
+  --docker-password=DOCKER_PASSWORD \
+  --docker-email=DOCKER_EMAIL
+```
+
+And now, you can create pods which reference that secret by adding an imagePullSecrets section to a Pod definition.
+The secret may not work properly when trying to create a pod on redhat worker node, you can reference other solutions to temporary fix it.
+```
+#example yaml file for creating pod pulling from private repo with secret
+apiVersion: v1
+kind: Pod
+metadata:
+  name: foo
+  namespace: awesomeapps
+spec:
+  containers:
+    - name: foo
+      image: janedoe/awesomeapp:v1
+  imagePullSecrets:
+    - name: REGISTRY_KEY_NAME
+```
+
+##### 3) Pre-pulled images
+By default, the kubelet tries to pull each image from the specified registry. However, if the imagePullPolicy property of the container is set to IfNotPresent or Never, then a local image is used (preferentially or exclusively, respectively).
+
 
 ## 4. Install Xilinx Runtime
 
