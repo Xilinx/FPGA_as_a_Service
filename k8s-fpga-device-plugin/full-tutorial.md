@@ -266,7 +266,40 @@ Using the output command on the worker node you want to add into the cluster. An
 
 `kubectl get node`
 
-#### Step 5: Configure pulling from private dockerhub repository (Optional)
+#### Step 5: Labeling your node (Optional)
+If you want to create a pod that gets scheduled to you chosen node, you need to label the node first and setting nodeSelector in your pod yaml file. 
+
+Choose your nodes, and add a label to it:
+`kubectl label nodes <your-node-name> disktype=ssd`
+
+Verify that your chosen node has a `disktype=ssd` label:
+`kubectl get nodes --show-labels`
+
+The output is similar to this:
+```
+NAME      STATUS    ROLES    AGE     VERSION        LABELS
+Master    Ready     master   1d      v1.18.9        ...,kubernetes.io/hostname=master
+worker0   Ready     <none>   1d      v1.18.9        ...,disktype=ssd,kubernetes.io/hostname=worker0
+worker1   Ready     <none>   1d      v1.18.9        ...,kubernetes.io/hostname=worker1
+worker2   Ready     <none>   1d      v1.18.9        ...,kubernetes.io/hostname=worker2
+```
+This example pod configuration yaml file describes a pod that has a node selector, disktype: ssd. This means that the pod will get scheduled on a node that has a disktype=ssd label.
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    env: test
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    imagePullPolicy: IfNotPresent
+  nodeSelector:
+    disktype: ssd
+```
+#### Step 6: Configure pulling from private dockerhub repository (Optional)
 
 If you want to pulling from a private dockerhub repository or using a private registry, there are three potential ways to do it.
 
