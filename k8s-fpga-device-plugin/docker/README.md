@@ -1,4 +1,4 @@
-## How to build new docker image and test it in k8s-fpga-device-plugin
+## How to build new docker image and test it with k8s-fpga-device-plugin
 
 We will use an example to explain how a new docker image with desired contents such as your xclbin, your host code etc. can be built. Please note that any accelerator (FPGA) docker image should be derived form the base docker Xilinx image **xilinxatg/aws-fpga-verify:20200131** already hosted at the Docker Hub.
 
@@ -8,7 +8,7 @@ To host a docker image, you need some sort of service. You can host it locally i
 
 Go to [https://hub.docker.com/signup](https://hub.docker.com/signup) to create a Docker Hub account (if you do not have one already), and then create a docker repository.
 
-In this document, we are using an example docker account named as **memo40k**  and an example repository named as **k8s.** Please substitute these by your account and repository names respectively. Also, please note that you can set your repository as private if you do not want others to see it.
+In this document, we are using an example docker account named as **xilinxatg**  and an example repository named as **k8s-plugin-dev**. Please substitute these by your account and repository names respectively. Also, please note that you can set your repository as private if you do not want others to see it.
 
 ### Prepare docker images
 
@@ -30,31 +30,58 @@ Here we will use our github folder [**docker/build_fpga_server_docker**](https:/
 
 You can add any number of folders with any contents you need for your server to work.
 
-The **xilinxatg/aws-fpga-verify:20200131**  on docker hub is the base image as mentioned earlier. In this example, the folder  **server**  will be added to an example location **/opt/xilinx/k8s/** in the docker image.
+Here we use **xilinxatg/aws-fpga-verify:20200131**  on docker hub as the base image mentioned earlier. In this example, the folder  **server**  will be added to an example location **/opt/xilinx/k8s/** in the docker image.
 
 `#touch Dockerfile  `
+
 create a dockerfile under the same folder with server
 
 `#vi Dockerfile  `
+
 To add following two lines into Dockerfile
+
 ```
 FROM xilinxatg/aws-fpga-verify:20200131  
 COPY docker /opt/xilinx/k8s/server
 ```
+
+You can also use a Ubuntu or Centos/Redhat docker image as base images, and write your own dockerfile to build a docker image.
+For example:
+
+```
+FROM ubuntu:18.04  #use ubuntu18.04 as base image
+RUN apt-get update; apt-get install -y zip sudo git python; mkdir /tmp/deploy   #install needed packages
+COPY u30_ubuntu_1804_v1.0_20201215.zip /tmp/deploy/                             #copy needed packages(this can be your xrt package) into image
+RUN unzip /tmp/deploy/u30_ubuntu_1804_v1.0_20201215.zip -d /tmp/deploy/
+WORKDIR /tmp/deploy/u30_ubuntu_1804_v1.0_20201215
+RUN ./install.sh                                                                #install packages
+WORKDIR /
+RUN rm -rf /tmp/deploy
+COPY sources.zip /opt/xilinx/
+RUN unzip /opt/xilinx/sources.zip -d /opt/xilinx/
+RUN rm /opt/xilinx/sources.zip
+RUN git clone https://github.com/gdraheim/docker-systemctl-replacement.git /usr/local/share/docker-systemctl-replacement   
+RUN echo "alias systemctl='python3 /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.py'" >> /root/.bashrc
+```
+
 #### Step 3: Build new docker image
 
-`#docker build -t memo40k/k8s:accelator_pod .  `
+`#docker build -t xilinxatg/k8s-plugin-dev:accelator_pod .  `
+
 It will build a new docker image called  **accelerator_pod**  using the docker file "**Dockerfile**" under the current folder
+
 `#docker images  `
+
 You can run this command to check whether the new images  **accelerator_pod**  was created.
+
 `# docker run -it <imageID>`  
+
 To test the docker image you just created, run the above. You should see the folder  **server** added into the docker image.
 
 #### Step 4: Push new image into docker hub
 
-`#docker push memo40k/k8s:accelator_podk8`
+`#docker push xilinxatg/k8s-plugin-dev:accelator_pod`
 
-You are all set.
 
 
 
@@ -73,6 +100,7 @@ Use the yaml files: [aws-accelator-pod.yaml](https://github.com/Xilinx/FPGA_as_a
 #### Step 1: Create accelerator and client pods
 
 `#kubectl create -f aws-accelator-pod.yaml  `
+
 `#kubectl create -f aws-test-client-pod.yaml`
 
 #### Step 2: Check pod status
@@ -80,22 +108,28 @@ Use the yaml files: [aws-accelator-pod.yaml](https://github.com/Xilinx/FPGA_as_a
 After creating the two pods, there will be an accelerator pod with FPGA access, a client pod without FPGA access, an accelerator pod deployment service and a fpga-server-svc network service as shown below.
 
 `#kubectl get pod`
+
 ```
 NAME                          READY      STATUS    RESTARTS    AGE  
 accelator-pod-ff67ff8b8-mwff   1/1       Running       0       22h  
 test-client-pod                1/1       Running       0       23h
 ```
+
 `#kubectl get deployment`
+
 ```
 NAME             READY   UP-TO-DATE   AVAILABLE    AGE  
 accelator-pod     1/1        1            1        22h
 ```
+
 `#kubectl get service`
+
 ```
 NAME               TYPE       CLUSTER-IP     EXTERNAL-IP    PORT(S)       AGE  
 fpga-server-svc  NodePort     10.96.59.3        <none>   8010:31600/TCP   22h  
 kubernetes       ClusterIP     10.96.0.1        <none>      443/TCP       14d
 ```
+
 #### Step 3: Run hello world in client pod
 
 `#kubectl exec test-client-pod python /opt/xilinx/k8s/client/client.py`
@@ -103,4 +137,5 @@ kubernetes       ClusterIP     10.96.0.1        <none>      443/TCP       14d
 
 
 **Note:**
+
 **If the status of the accelerator pod shows as pending, please check whether the card is already assigned to another running pod. If so, please delete the running pod and recreate the accelerator pod.**
