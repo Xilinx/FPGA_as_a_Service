@@ -15,3 +15,51 @@ The above problem is due to missing /etc/OpenCL/vendors/xilinx.icd inside contai
 ```
 docker cp /etc/OpenCL/vendors/xilinx.icd containerID:/etc/OpenCL/vendors/xilinx.icd
 ```
+
+**Question: For a pod, what I need to do if I want to use an image from private docker repository?**
+
+**Answer:**
+If you want to pulling from a private dockerhub repository or using a private registry, there are three potential ways to do it.
+
+You can also check k8s document for more detialed information: https://kubernetes.io/docs/concepts/containers/images/
+
+##### 1) Configuring nodes to authenticate to a private registry
+If you run Docker on your nodes, you can configure the Docker container runtime to authenticate to a private container registry. This approach is suitable if you can control node configuration. Docker stores keys for private registries in the $HOME/.dockercfg or $HOME/.docker/config.json file. If you put the same file in the search paths {cwd of kubelet}/config.json, kubelet uses it as the credential provider when pulling images.
+
+Following command need to be run as root user on all nodes you need pulling images from a private repo:
+```
+docker login
+cp /root/.docker/config.json /var/lib/kubelet/
+```
+
+##### 2) Specifying imagePullSecrets on a Pod
+You can use following command to create a secret with a docker config:
+
+```
+kubectl create secret docker-registry REGISTRY_KEY_NAME \
+  --docker-server=DOCKER_REGISTRY_SERVER \
+  --docker-username=DOCKER_USER \
+  --docker-password=DOCKER_PASSWORD \
+  --docker-email=DOCKER_EMAIL
+```
+
+And now, you can create pods which reference that secret by adding an imagePullSecrets section to a Pod definition.
+The secret may not work properly when trying to create a pod on redhat worker node, you can reference other solutions to temporary fix it.
+```
+#example yaml file for creating pod pulling from private repo with secret
+apiVersion: v1
+kind: Pod
+metadata:
+  name: foo
+  namespace: awesomeapps
+spec:
+  containers:
+    - name: foo
+      image: janedoe/awesomeapp:v1
+  imagePullSecrets:
+    - name: REGISTRY_KEY_NAME
+```
+
+##### 3) Pre-pulled images
+By default, the kubelet tries to pull each image from the specified registry. However, if the imagePullPolicy property of the container is set to IfNotPresent or Never, then a local image is used (preferentially or exclusively, respectively).
+
