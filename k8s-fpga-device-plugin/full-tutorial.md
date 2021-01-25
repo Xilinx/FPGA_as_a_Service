@@ -370,7 +370,7 @@ To check the FPGA device on the system:
 
 ## 5. Install Kubernetes FPGA Plugin
 
-Here we only have one node (master), and plan to deploy the FPGA plug on this node, to enable this configuration, we need to configure the control plan node.
+If you only have one node (master), and plan to deploy the FPGA plugin on this node, to enable this configuration, we need to configure the control plane node.
 
 ### Control plane node isolation
 
@@ -410,7 +410,7 @@ You should get the FPGA resources name under the pods information.
 **Note:**
 
 1) mypod.yaml is under ./aws
-2) modify the image to be "xilinxatg/aws-fpga-verify:20200131"
+2) modify the image to be "xilinxatg/aws-fpga-verify:20200131", you can change this to your own docker images.
 3) modify the resources: set limits same as the that in worker node like "[xilinx.com/fpga-xilinx_aws-vu9p-f1_dynamic_5_0-43981](http://xilinx.com/fpga-xilinx_aws-vu9p-f1_dynamic_5_0-43981): 1". To run "kubectl describe node nodename" to find out the resource.
 
 To check status of the deployed pod:  
@@ -442,7 +442,7 @@ To host a docker image, you need some sort of service. You can host it locally i
 
 Go to [https://hub.docker.com/signup](https://hub.docker.com/signup) to create a Docker Hub account (if you do not have one already), and then create a docker repository.
 
-In this document, we are using an example docker account named as **memo40k**  and an example repository named as **k8s.** Please substitute these by your account and repository names respectively. Also, please note that you can set your repository as private if you do not want others to see it.
+In this document, we are using an example docker account named as **xilinxatg**  and an example repository named as **k8s-plugin-dev**. Please substitute these by your account and repository names respectively. Also, please note that you can set your repository as private if you do not want others to see it.
 
 ### Prepare docker images
 
@@ -464,7 +464,7 @@ Here we will use our github folder [**docker/build_fpga_server_docker**](https:/
 
 You can add any number of folders with any contents you need for your server to work.
 
-The **xilinxatg/aws-fpga-verify:20200131**  on docker hub is the base image as mentioned earlier. In this example, the folder  **server**  will be added to an example location **/opt/xilinx/k8s/** in the docker image.
+Here we use **xilinxatg/aws-fpga-verify:20200131**  on docker hub as the base image mentioned earlier. In this example, the folder  **server**  will be added to an example location **/opt/xilinx/k8s/** in the docker image.
 
 `#touch Dockerfile  `
 
@@ -478,9 +478,29 @@ To add following two lines into Dockerfile
 FROM xilinxatg/aws-fpga-verify:20200131  
 COPY docker /opt/xilinx/k8s/server
 ```
+
+You can also use a Ubuntu or Centos/Redhat docker image as base images, and write your own dockerfile to build a docker image.
+For example:
+
+```
+FROM ubuntu:18.04  #use ubuntu18.04 as base image
+RUN apt-get update; apt-get install -y zip sudo git python; mkdir /tmp/deploy   #install needed packages
+COPY u30_ubuntu_1804_v1.0_20201215.zip /tmp/deploy/                             #copy needed packages(this can be your xrt package) into image
+RUN unzip /tmp/deploy/u30_ubuntu_1804_v1.0_20201215.zip -d /tmp/deploy/
+WORKDIR /tmp/deploy/u30_ubuntu_1804_v1.0_20201215
+RUN ./install.sh                                                                #install packages
+WORKDIR /
+RUN rm -rf /tmp/deploy
+COPY sources.zip /opt/xilinx/
+RUN unzip /opt/xilinx/sources.zip -d /opt/xilinx/
+RUN rm /opt/xilinx/sources.zip
+RUN git clone https://github.com/gdraheim/docker-systemctl-replacement.git /usr/local/share/docker-systemctl-replacement   
+RUN echo "alias systemctl='python3 /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.py'" >> /root/.bashrc
+```
+
 #### Step 3: Build new docker image
 
-`#docker build -t memo40k/k8s:accelator_pod .  `
+`#docker build -t xilinxatg/k8s-plugin-dev:accelator_pod .  `
 
 It will build a new docker image called  **accelerator_pod**  using the docker file "**Dockerfile**" under the current folder
 
@@ -494,7 +514,7 @@ To test the docker image you just created, run the above. You should see the fol
 
 #### Step 4: Push new image into docker hub
 
-`#docker push memo40k/k8s:accelator_podk8`
+`#docker push xilinxatg/k8s-plugin-dev:accelator_pod`
 
 
 
