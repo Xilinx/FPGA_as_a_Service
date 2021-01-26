@@ -16,7 +16,7 @@ The above problem is due to missing /etc/OpenCL/vendors/xilinx.icd inside contai
 docker cp /etc/OpenCL/vendors/xilinx.icd containerID:/etc/OpenCL/vendors/xilinx.icd
 ```
 
-## Question: For a pod, what I need to do if I want to use an image from private docker repository? ##
+## Question: When creating a pod, what I need to do if I want to use an image from private docker repository? ##
 
 **Answer:**
 If you want to pulling from a private dockerhub repository or using a private registry, there are three potential ways to do it.
