@@ -4,7 +4,7 @@
 This documentation describes how to deploy FPGA plugin with Docker and Kubernetes on RedHat, CentOS and Ubuntu.
 ## 1. Install Docker
 
-### Prerequisites
+### 1.1 Prerequisites
 
 CentOS:
 
@@ -27,8 +27,8 @@ Ubuntu:
 -   A user account with sudo privileges
 -   Command-line/terminal
 -   Docker software repositories (optional)
-
-### Installing Docker on CentOS 7 / RedHat 7.8 With Yum
+### 1.2 Install Docker
+### 1.2.1 Installing Docker on CentOS 7 / RedHat 7.8 With Yum
 
 #### Step 1: Update Docker Package Database
 
@@ -76,7 +76,7 @@ Check the status of the service:
 
 `#sudo docker run hello-world`
 
-### Installing Docker on Ubuntu With Apt-get
+### 1.2.2 Installing Docker on Ubuntu With Apt-get
 
 #### Step 1: Update Software Repositories
 
@@ -114,12 +114,11 @@ You will install these packages on all of your machines:
 
 -   `kubectl`: the command line util to talk to your cluster.
 
-
 Here is the referred document from Kubernetes:
 
 [https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
 
-### Installing kubeadm, kubelet and kubectl on CentOS / Redhat
+### 2.1 Installing kubeadm, kubelet and kubectl on CentOS / Redhat
 
 #### Step 1: Set kubernetes repo
 
@@ -168,7 +167,7 @@ To load it explicitly call
 #sudo systemctl enable --now kubelet
 ```
 
-### Installing kubeadm, kubelet and kubectl on Ubuntu
+### 2.2 Installing kubeadm, kubelet and kubectl on Ubuntu
 
 #### Step 1: Set kubernetes repo
 ```
@@ -201,9 +200,9 @@ For Ubuntu:
 ```
 ## 3. Configure Cluster
 
-Here will create **master** node and use it.
 
-### Disable swap (this step need to be done on all your nodes)
+
+### 3.1 Disable swap (this step need to be done on all your nodes)
 
 `#sudo swapoff -a`
 
@@ -211,9 +210,9 @@ Here will create **master** node and use it.
 
 This command only temporary disable swap, run this command each time after reboot the machine.
 
-### Create and Configure nodes
+### 3.2 Build Master Node
 
-#### Step 1: init master node
+#### Step 1: Init master node
 ```
 #sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 #sudo mkdir -p $HOME/.kube
@@ -247,11 +246,11 @@ For other version, please refer [https://github.com/coreos/flannel](https://gith
 
 `#sudo kubectl get pod -n kube-system -o wide`
 
-#### Step 4: Adding worker node (slave node)
+### 3.3: Adding worker node (slave node)
 
 If there are multiple server machines or AWS instances you want to add into cluster as worker node, you need to follow our perivous step install matched version of kubectl kubeadm and kubelet. 
 
-Login to your master node, use following command to get your token command for join cluster:
+Login to your master node, use following command to get your token command for joining cluster:
 
 `kubeadm token create --print-join-command`
 
@@ -259,11 +258,11 @@ You will get a output command like :
 
 `kubeadm join 192.168.54.128:6443 --token mg4o13.4ilr1oi605tj850w   --discovery-token-ca-cert-hash sha256:363b5b8525ddb86f4dc157f059e40c864223add26ef53d0cfc9becc3cbae8ad3`
 
-Using the output command on the worker node you want to add into the cluster. And check result on master node with command:
+Insert the output command on the worker nodes you want to add into cluster. Then checking adding result on master node with command:
 
 `kubectl get node`
 
-#### Step 5: Labeling your node (Optional)
+### 3.4 Labeling your node (Optional)
 If you want to create a pod that gets scheduled to you chosen node, you need to label the node first and setting nodeSelector in your pod yaml file. 
 
 Choose your nodes, and add a label to it:
@@ -303,13 +302,13 @@ For bare-metal machine you can directly install xrt packages with "apt install" 
 Here we mainly introduce how to install XRT on an AWS F1  CentOS server.
 We will download XRT from github, build and install it with following command line.
 
-### Setup tool
+### 4.1 Setup tool
 
 `#scl enable devtoolset-6 bash`
 
 If scl and devtoolset is not installed, then need to install the listed tools.
 
-### Setup AWS FGPA
+### 4.2 Setup AWS FGPA
 
 Here need to download aws FGPA because XRT build will depend on the it.
 
@@ -317,7 +316,7 @@ Here need to download aws FGPA because XRT build will depend on the it.
 
 `#export AWS_FPGA_REPO_DIR="path of aws-fpga"`
 
-### Build and Install XRT
+### 4.3 Build and Install XRT
 
 **Note:** Based on current test, XRT 2019.2.0.3 works well on AWS F1, the master version has issue on some F1 instance. So here we recommend to use 2019.2.0.3 version.
 
@@ -356,16 +355,15 @@ To check the FPGA device on the system:
 
 If you only have one node (master), and plan to deploy the FPGA plugin on this node, to enable this configuration, we need to configure the control plane node.
 
-### Control plane node isolation
+### 5.1 Control plane node isolation
 
 By default, your cluster will not schedule Pods on the control-plane node for security reasons. If you want to be able to schedule Pods on the control-plane node, e.g. for a single-machine Kubernetes cluster for development, run:
 
 `#kubectl taint nodes --all node-role.kubernetes.io/master-`
 
-### Install Kubernetes FPGA plugin
+### 5.2 Install Kubernetes FPGA plugin
 
-####   
-Step 1: down plugin source
+####   Step 1: Download plugin source
 
 `#git clone  https://github.com/Xilinx/FPGA_as_a_Service.git`
 
@@ -420,7 +418,7 @@ after the pod status truns to Running, run hello world in the pod:
 
 We will use an example to explain how a new docker image with desired contents such as your xclbin, your host code etc. can be built. Please note that any accelerator (FPGA) docker image should be derived form the base docker Xilinx image **xilinxatg/aws-fpga-verify:20200131** already hosted at the Docker Hub.
 
-### Prerequisites
+### 6.1 Prerequisites
 
 To host a docker image, you need some sort of service. You can host it locally if you like (please read online docker instructions for that). However, this instruction uses [Docker Hub](https://hub.docker.com/)  as the hosting service.
 
@@ -428,10 +426,9 @@ Go to [https://hub.docker.com/signup](https://hub.docker.com/signup) to create a
 
 In this document, we are using an example docker account named as **xilinxatg**  and an example repository named as **k8s-plugin-dev**. Please substitute these by your account and repository names respectively. Also, please note that you can set your repository as private if you do not want others to see it.
 
-### Prepare docker images
+### 6.2 Prepare docker images
 
-####   
-Step 1: Login to your Docker Hub account
+####   Step 1: Login to your Docker Hub account
 
 `#docker login -u <username> -p <password>`
 
@@ -503,10 +500,9 @@ Please repeat the steps 2 to 4 with your desired executable contents for the cli
 
 
 
-### Verify docker image
+### 6.3 Verify docker image
 
 Use the yaml files: [aws-accelator-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/aws-accelator-pod.yaml)  and [aws-test-client-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/aws-test-client-pod.yaml)  to create accelerator and client pods respectively.
-
 
 
 #### Step 1: Create accelerator and client pods
