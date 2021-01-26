@@ -1,3 +1,4 @@
+
 # Xilinx FPGA Plugin Deployment Full Tutorial
 
 This documentation describes how to deploy FPGA plugin with Docker and Kubernetes on RedHat, CentOS and Ubuntu.
@@ -138,9 +139,10 @@ gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cl
 
 #### Step 2: Set SELinux in permissive mode (effectively disabling it)
 
-`#sudo setence 0  `
-
-`#sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config `
+```
+#sudo setence 0
+#sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config 
+```
 
 **Note**: Setting SELinux in permissive mode by running setenforce 0 and sed ... effectively disables it. This is required to allow containers to access the host filesystem, which is needed by pod networks for example. You have to do this until SELinux support is improved in the kubelet.  
 
@@ -161,19 +163,18 @@ To load it explicitly call
 `#sudo modprobe br_netfilter`
 
 #### Step 3: Install Kubernetes
-
-`#sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes`
-
-`#sudo systemctl enable --now kubelet`
+```
+#sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes`
+#sudo systemctl enable --now kubelet
+```
 
 ### Installing kubeadm, kubelet and kubectl on Ubuntu
 
 #### Step 1: Set kubernetes repo
-
-`#sudo apt-get update`
-
-`#sudo apt-get install -y iptables arptables ebtable`
-
+```
+#sudo apt-get update
+#sudo apt-get install -y iptables arptables ebtable
+```
 #### Step 2: Install Kubernetes
 
 ```bash
@@ -186,19 +187,15 @@ To load it explicitly call
 
 **Note**:  
 If you want to install specified version of kubelet, kubeadm and kubectl. You can use following command to check and install available versions.
-```bash
-#sudo apt-get update && sudo apt-get install -y apt-transport-https curl
-#curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-#sudo apt-get update
+
+For Redhat: 
 ```
-Check available versions:
+#sudo yum install -y kubelet-1.18.9 kubeadm-1.18.9 kubectl-1.18.9 --disableexcludes=kubernetes
+#sudo systemctl enable --now kubelet
+```
+For Ubuntu:
 ```
 #sudo apt-cache policy kubeadm
-#sudo apt-cache policy kubelet
-#sudo apt-cache policy kubctl
-```
-Then you can install with specified versions:
-```
 #sudo apt-get install -y kubelet=1.18.9-00 kubeadm=1.18.9-00 kubectl=1.18.9-00
 #sudo apt-mark hold kubelet kubeadm kubectl
 ```
@@ -214,7 +211,7 @@ Here will create **master** node and use it.
 
 This command only temporary disable swap, run this command each time after reboot the machine.
 
-### Create and Configure node
+### Create and Configure nodes
 
 #### Step 1: init master node
 ```
@@ -299,58 +296,12 @@ spec:
   nodeSelector:
     disktype: ssd
 ```
-#### Step 6: Configure pulling from private dockerhub repository (Optional)
-
-If you want to pulling from a private dockerhub repository or using a private registry, there are three potential ways to do it.
-
-You can also check k8s document for more detialed information: https://kubernetes.io/docs/concepts/containers/images/
-
-##### 1) Configuring nodes to authenticate to a private registry
-If you run Docker on your nodes, you can configure the Docker container runtime to authenticate to a private container registry. This approach is suitable if you can control node configuration. Docker stores keys for private registries in the $HOME/.dockercfg or $HOME/.docker/config.json file. If you put the same file in the search paths {cwd of kubelet}/config.json, kubelet uses it as the credential provider when pulling images.
-
-Following command need to be run as root user on all nodes you need pulling images from a private repo:
-```
-docker login
-cp /root/.docker/config.json /var/lib/kubelet/
-```
-
-##### 2) Specifying imagePullSecrets on a Pod
-You can use following command to create a secret with a docker config:
-
-```
-kubectl create secret docker-registry REGISTRY_KEY_NAME \
-  --docker-server=DOCKER_REGISTRY_SERVER \
-  --docker-username=DOCKER_USER \
-  --docker-password=DOCKER_PASSWORD \
-  --docker-email=DOCKER_EMAIL
-```
-
-And now, you can create pods which reference that secret by adding an imagePullSecrets section to a Pod definition.
-The secret may not work properly when trying to create a pod on redhat worker node, you can reference other solutions to temporary fix it.
-```
-#example yaml file for creating pod pulling from private repo with secret
-apiVersion: v1
-kind: Pod
-metadata:
-  name: foo
-  namespace: awesomeapps
-spec:
-  containers:
-    - name: foo
-      image: janedoe/awesomeapp:v1
-  imagePullSecrets:
-    - name: REGISTRY_KEY_NAME
-```
-
-##### 3) Pre-pulled images
-By default, the kubelet tries to pull each image from the specified registry. However, if the imagePullPolicy property of the container is set to IfNotPresent or Never, then a local image is used (preferentially or exclusively, respectively).
-
-
 ## 4. Install Xilinx Runtime
 
-Download XRT from github, build and install it with following command line.
+For bare-metal machine you can directly install xrt packages with "apt install" and "yum install". 
 
-For bare-metal machine you can directly install it with "apt install" and "yum install". Here we mainly introduce how to install XRT on AWS.
+Here we mainly introduce how to install XRT on an AWS F1  CentOS server.
+We will download XRT from github, build and install it with following command line.
 
 ### Setup tool
 
@@ -516,19 +467,13 @@ You can also use a Ubuntu or Centos/Redhat docker image as base images, and writ
 For example:
 
 ```
+#example dockerfile
 FROM ubuntu:18.04  #use ubuntu18.04 as base image
 RUN apt-get update; apt-get install -y zip sudo git python; mkdir /tmp/deploy   #install needed packages
 COPY u30_ubuntu_1804_v1.0_20201215.zip /tmp/deploy/                             #copy needed packages(this can be your xrt package) into image
 RUN unzip /tmp/deploy/u30_ubuntu_1804_v1.0_20201215.zip -d /tmp/deploy/
 WORKDIR /tmp/deploy/u30_ubuntu_1804_v1.0_20201215
 RUN ./install.sh                                                                #install packages
-WORKDIR /
-RUN rm -rf /tmp/deploy
-COPY sources.zip /opt/xilinx/
-RUN unzip /opt/xilinx/sources.zip -d /opt/xilinx/
-RUN rm /opt/xilinx/sources.zip
-RUN git clone https://github.com/gdraheim/docker-systemctl-replacement.git /usr/local/share/docker-systemctl-replacement   
-RUN echo "alias systemctl='python3 /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.py'" >> /root/.bashrc
 ```
 
 #### Step 3: Build new docker image
