@@ -1,4 +1,3 @@
-
 # Xilinx FPGA Plugin Deployment Full Tutorial
 
 This documentation describes how to deploy FPGA plugin with Docker and Kubernetes on RedHat, CentOS and Ubuntu.
@@ -27,8 +26,7 @@ Ubuntu:
 -   A user account with sudo privileges
 -   Command-line/terminal
 -   Docker software repositories (optional)
-### 1.2 Install Docker
-### 1.2.1 Installing Docker on CentOS 7 / RedHat 7.8 With Yum
+### 1.2 Install Docker on CentOS 7 / RedHat 7.8 With Yum
 
 #### Step 1: Update Docker Package Database
 
@@ -76,7 +74,7 @@ Check the status of the service:
 
 `#sudo docker run hello-world`
 
-### 1.2.2 Installing Docker on Ubuntu With Apt-get
+### 1.3 Install Docker on Ubuntu With Apt-get
 
 #### Step 1: Update Software Repositories
 
@@ -118,7 +116,7 @@ Here is the referred document from Kubernetes:
 
 [https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
 
-### 2.1 Installing kubeadm, kubelet and kubectl on CentOS / Redhat
+### 2.1 Install kubeadm, kubelet and kubectl on CentOS / Redhat
 
 #### Step 1: Set kubernetes repo
 
@@ -167,7 +165,7 @@ To load it explicitly call
 #sudo systemctl enable --now kubelet
 ```
 
-### 2.2 Installing kubeadm, kubelet and kubectl on Ubuntu
+### 2.2 Install kubeadm, kubelet and kubectl on Ubuntu
 
 #### Step 1: Set kubernetes repo
 ```
@@ -199,7 +197,6 @@ For Ubuntu:
 #sudo apt-mark hold kubelet kubeadm kubectl
 ```
 ## 3. Configure Cluster
-
 
 
 ### 3.1 Disable swap (this step need to be done on all your nodes)
@@ -246,7 +243,7 @@ For other version, please refer [https://github.com/coreos/flannel](https://gith
 
 `#sudo kubectl get pod -n kube-system -o wide`
 
-### 3.3: Adding worker node (slave node)
+### 3.3 Adding worker node (slave node)
 
 If there are multiple server machines or AWS instances you want to add into cluster as worker node, you need to follow our perivous step install matched version of kubectl kubeadm and kubelet. 
 
@@ -297,11 +294,11 @@ spec:
 ```
 ## 4. Install Xilinx Runtime
 
-For bare-metal machine you can directly install xrt packages with "apt install" and "yum install". 
+For bare-metal machine you can directly install xrt packages with "sudo apt install xrt_version.deb" or "sudo yum install xrt_version.rpm". 
+XRT installation tutorial: https://xilinx.github.io/XRT/master/html/install.html
 
 Here we mainly introduce how to install XRT on an AWS F1  CentOS server.
 We will download XRT from github, build and install it with following command line.
-
 ### 4.1 Setup tool
 
 `#scl enable devtoolset-6 bash`
@@ -334,7 +331,6 @@ Here need to download aws FGPA because XRT build will depend on the it.
 #### Step 2: Install XRT
 
 `#yum install xrt_201920.2.3.0_7.7.1908-xrt.rpm`
-
 `#yum install xrt_201920.2.3.0_7.7.1908-aws.rpm`
 
 Please refer to the full instruction on how to build and install XRT:
@@ -353,7 +349,7 @@ To check the FPGA device on the system:
 
 ## 5. Install Kubernetes FPGA Plugin
 
-If you only have one node (master), and plan to deploy the FPGA plugin on this node, to enable this configuration, we need to configure the control plane node.
+If you only have one node (master) in your cluster or plan to deploy pod on master node, to enable this configuration, we need to configure the control plane node.
 
 ### 5.1 Control plane node isolation
 
@@ -385,40 +381,67 @@ Check FPGA resource in the worker node:
 
 You should get the FPGA resources name under the pods information.
 
-#### Step 2: Deploy user pod
+## 6 Deploy user pod
+### 6.1 Edit your pod creating yaml file
+Here we use following yaml file as an example, you can found it under ./exiaws/mypod.yaml
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: my-pod
+    image: centos:bx #user needs to build use its own docker image
+    securityContext:
+      privileged: true
+    resources:
+      limits:
+        xilinx.com/fpga-xilinx_aws-vu9p-f1-04261818_dynamic_5_0-0: 1
+    command: ["/bin/sh"]
+    args: ["-c", "while true; do echo hello; sleep 10;done"]
+    volumeMounts:
+      - name: sys
+        mountPath: /sys
+  volumes:
+    - name: sys
+      hostPath:
+        path: /sys
+```
+You need to do following configuration before  you creating the pod:
+1) Modify the image to be "xilinxatg/aws-fpga-verify:20200131", you can change this to your own docker images.
+2) You can use `kubectl describe node [nodename]` on master node to check available resources' number  and names.
+3) Modify the resources: set limits same as the that in worker node like "xilinx.com/fpga-xilinx_aws-vu9p-f1_dynamic_5_0-43981: 1". 
 
-`#kubectl create -f mypod.yaml`
 
-**Note:**
 
-1) mypod.yaml is under ./aws
-2) modify the image to be "xilinxatg/aws-fpga-verify:20200131", you can change this to your own docker images.
-3) modify the resources: set limits same as the that in worker node like "[xilinx.com/fpga-xilinx_aws-vu9p-f1_dynamic_5_0-43981](http://xilinx.com/fpga-xilinx_aws-vu9p-f1_dynamic_5_0-43981): 1". To run "kubectl describe node nodename" to find out the resource.
+### 6.2 Creat pod
+Create pod from yaml file: `#kubectl create -f mypod.yaml`
+To check status of the deployed pod: `#kubectl get pod`
+```
+NAME     READY   STATUS    RESTARTS   AGE
+my-pod   1/1     Running   0          59m
+```
+If the pod is stuck at contianer-creating step or being evicted, use `#kubectl describe pod my-pod` to check detailed information about pod creating process.
+### 6.3 Vaildate pod
+After the pod status truns to Running, run hello world in the pod:  
 
-To check status of the deployed pod:  
-
-`#kubectl get pod`
-
-#### Step 3: Run the test in pod
-after the pod status truns to Running, run hello world in the pod:  
-
-`#kubectl exec -it my-pod /bin/bash  `
+`#kubectl exec -it my-pod -- /bin/bash  `
 
 `#my-pod>source /opt/xilinx/xrt/setup.sh  `
 
-**Note:**  Need to set the INTERNAL_BUILD=1 if xbutil complain the version not match:  
-
+**Note:**  Need to set the INTERNAL_BUILD=1 if xbutil complain the version not match inside pod:  
 ```
 #my-pod>export INTERNAL_BUILD=1  
 #my-pod>xbutil scan  
 #my-pod>cd /opt/test/  
 #my-pod>./helloworld vector_addition_hw.awsxclbin
 ```
-## 6. How to build new docker image
+## 7. How to build new docker image
 
 We will use an example to explain how a new docker image with desired contents such as your xclbin, your host code etc. can be built. Please note that any accelerator (FPGA) docker image should be derived form the base docker Xilinx image **xilinxatg/aws-fpga-verify:20200131** already hosted at the Docker Hub.
 
-### 6.1 Prerequisites
+### 7.1 Prerequisites
 
 To host a docker image, you need some sort of service. You can host it locally if you like (please read online docker instructions for that). However, this instruction uses [Docker Hub](https://hub.docker.com/)  as the hosting service.
 
@@ -426,7 +449,7 @@ Go to [https://hub.docker.com/signup](https://hub.docker.com/signup) to create a
 
 In this document, we are using an example docker account named as **xilinxatg**  and an example repository named as **k8s-plugin-dev**. Please substitute these by your account and repository names respectively. Also, please note that you can set your repository as private if you do not want others to see it.
 
-### 6.2 Prepare docker images
+### 7.2 Prepare docker images
 
 ####   Step 1: Login to your Docker Hub account
 
@@ -500,7 +523,7 @@ Please repeat the steps 2 to 4 with your desired executable contents for the cli
 
 
 
-### 6.3 Verify docker image
+### 7.3 Verify docker image
 
 Use the yaml files: [aws-accelator-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/aws-accelator-pod.yaml)  and [aws-test-client-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/aws-test-client-pod.yaml)  to create accelerator and client pods respectively.
 
