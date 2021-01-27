@@ -118,7 +118,7 @@ Here is the referred document from Kubernetes:
 
 ### 2.1 Install kubeadm, kubelet and kubectl on CentOS / Redhat
 
-#### Step 1: Set kubernetes repo
+#### Step 1: Set Kubernetes repo
 
 `#update-alternatives --set iptables /usr/sbin/iptables-legacy`
 
@@ -292,20 +292,22 @@ spec:
   nodeSelector:
     disktype: ssd
 ```
-## 4. Install Xilinx Runtime
+## 4. Install Xilinx Runtime (XRT)
 
+### 4.1 Install with XRT package
 For bare-metal machine you can directly install xrt packages with "sudo apt install xrt_version.deb" or "sudo yum install xrt_version.rpm". 
 XRT installation tutorial: https://xilinx.github.io/XRT/master/html/install.html
 
-Here we mainly introduce how to install XRT on an AWS F1  CentOS server.
+### 4.2 Build XRT from source code on AWS F1 (optional)
+Here we will introduce how to build and install XRT on an AWS F1 CentOS server. 
 We will download XRT from github, build and install it with following command line.
-### 4.1 Setup tool
+#### 4.2.1 Setup tool
 
 `#scl enable devtoolset-6 bash`
 
 If scl and devtoolset is not installed, then need to install the listed tools.
 
-### 4.2 Setup AWS FGPA
+#### 4.2.2 Setup AWS FGPA
 
 Here need to download aws FGPA because XRT build will depend on the it.
 
@@ -313,7 +315,7 @@ Here need to download aws FGPA because XRT build will depend on the it.
 
 `#export AWS_FPGA_REPO_DIR="path of aws-fpga"`
 
-### 4.3 Build and Install XRT
+#### 4.2.3 Build and Install XRT
 
 **Note:** Based on current test, XRT 2019.2.0.3 works well on AWS F1, the master version has issue on some F1 instance. So here we recommend to use 2019.2.0.3 version.
 
@@ -359,6 +361,8 @@ By default, your cluster will not schedule Pods on the control-plane node for se
 
 ### 5.2 Install Kubernetes FPGA plugin
 
+Following steps need to be done on your master node. After install FPGA plugin you don't need to do any other configuration when adding new nodes into the cluster.
+
 ####   Step 1: Download plugin source
 
 `#git clone  https://github.com/Xilinx/FPGA_as_a_Service.git`
@@ -369,7 +373,7 @@ Deploy FPGA device plugin as daemonset:
 
 To check the status of daemonset:  
 
-`#kubectl get pod -n kube-system  `
+`#kubectl get daemonset -n kube-system  `
 
 Get node name:  
 
@@ -409,7 +413,7 @@ spec:
         path: /sys
 ```
 You need to do following configuration before  you creating the pod:
-1) Modify the image to be "xilinxatg/aws-fpga-verify:20200131", you can change this to your own docker images.
+1) Modify the image to be "xilinxatg/aws-fpga-verify:20200131", you can change this to your own docker images. We will introduce how to build your own docker image at section 7 of this tutorial.
 2) You can use `kubectl describe node [nodename]` on master node to check available resources' number  and names.
 3) Modify the resources: set limits same as the that in worker node like "xilinx.com/fpga-xilinx_aws-vu9p-f1_dynamic_5_0-43981: 1". 
 
@@ -422,9 +426,9 @@ To check status of the deployed pod: `#kubectl get pod`
 NAME     READY   STATUS    RESTARTS   AGE
 my-pod   1/1     Running   0          59m
 ```
-If the pod is stuck at contianer-creating step or being evicted, use `#kubectl describe pod my-pod` to check detailed information about pod creating process.
+If the pod is stucked at contianer-creating step or being evicted, use `#kubectl describe pod my-pod` to check detailed information about pod creating process.
 ### 6.3 Vaildate pod
-After the pod status truns to Running, run hello world in the pod:  
+After the pod status turns to Running, run hello world in the pod:  
 
 `#kubectl exec -it my-pod -- /bin/bash  `
 
@@ -570,3 +574,4 @@ kubernetes       ClusterIP     10.96.0.1        <none>      443/TCP       14d
 **Note:**
 
 **If the status of the accelerator pod shows as pending, please check whether the card is already assigned to another running pod. If so, please delete the running pod and recreate the accelerator pod.**
+
