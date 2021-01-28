@@ -3,7 +3,7 @@
 This documentation describes how to deploy FPGA plugin with Docker and Kubernetes on RedHat, CentOS and Ubuntu.
 ## 1. Install Docker
 
-### Prerequisites
+### 1.1 Prerequisites
 
 CentOS:
 
@@ -26,8 +26,7 @@ Ubuntu:
 -   A user account with sudo privileges
 -   Command-line/terminal
 -   Docker software repositories (optional)
-
-### Installing Docker on CentOS 7 / RedHat 7.8 With Yum
+### 1.2 Install Docker on CentOS 7 / RedHat 7.8 With Yum
 
 #### Step 1: Update Docker Package Database
 
@@ -75,7 +74,7 @@ Check the status of the service:
 
 `#sudo docker run hello-world`
 
-### Installing Docker on Ubuntu With Apt-get
+### 1.3 Install Docker on Ubuntu With Apt-get
 
 #### Step 1: Update Software Repositories
 
@@ -113,14 +112,13 @@ You will install these packages on all of your machines:
 
 -   `kubectl`: the command line util to talk to your cluster.
 
-
 Here is the referred document from Kubernetes:
 
 [https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
 
-### Installing kubeadm, kubelet and kubectl on CentOS / Redhat
+### 2.1 Install kubeadm, kubelet and kubectl on CentOS / Redhat
 
-#### Step 1: Set kubernetes repo
+#### Step 1: Set Kubernetes repo
 
 `#update-alternatives --set iptables /usr/sbin/iptables-legacy`
 
@@ -138,9 +136,10 @@ gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cl
 
 #### Step 2: Set SELinux in permissive mode (effectively disabling it)
 
-`#sudo setence 0  `
-
-`#sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config `
+```
+#sudo setence 0
+#sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config 
+```
 
 **Note**: Setting SELinux in permissive mode by running setenforce 0 and sed ... effectively disables it. This is required to allow containers to access the host filesystem, which is needed by pod networks for example. You have to do this until SELinux support is improved in the kubelet.  
 
@@ -161,19 +160,18 @@ To load it explicitly call
 `#sudo modprobe br_netfilter`
 
 #### Step 3: Install Kubernetes
+```
+#sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes`
+#sudo systemctl enable --now kubelet
+```
 
-`#sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes`
-
-`#sudo systemctl enable --now kubelet`
-
-### Installing kubeadm, kubelet and kubectl on Ubuntu
+### 2.2 Install kubeadm, kubelet and kubectl on Ubuntu
 
 #### Step 1: Set kubernetes repo
-
-`#sudo apt-get update`
-
-`#sudo apt-get install -y iptables arptables ebtable`
-
+```
+#sudo apt-get update
+#sudo apt-get install -y iptables arptables ebtable
+```
 #### Step 2: Install Kubernetes
 
 ```bash
@@ -186,27 +184,22 @@ To load it explicitly call
 
 **Note**:  
 If you want to install specified version of kubelet, kubeadm and kubectl. You can use following command to check and install available versions.
-```bash
-#sudo apt-get update && sudo apt-get install -y apt-transport-https curl
-#curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-#sudo apt-get update
+
+For Redhat: 
 ```
-Check available versions:
+#sudo yum install -y kubelet-1.18.9 kubeadm-1.18.9 kubectl-1.18.9 --disableexcludes=kubernetes
+#sudo systemctl enable --now kubelet
+```
+For Ubuntu:
 ```
 #sudo apt-cache policy kubeadm
-#sudo apt-cache policy kubelet
-#sudo apt-cache policy kubctl
-```
-Then you can install with specified versions:
-```
 #sudo apt-get install -y kubelet=1.18.9-00 kubeadm=1.18.9-00 kubectl=1.18.9-00
 #sudo apt-mark hold kubelet kubeadm kubectl
 ```
 ## 3. Configure Cluster
 
-Here will create **master** node and use it.
 
-### Disable swap (this step need to be done on all your nodes)
+### 3.1 Disable swap (this step need to be done on all your nodes)
 
 `#sudo swapoff -a`
 
@@ -214,9 +207,9 @@ Here will create **master** node and use it.
 
 This command only temporary disable swap, run this command each time after reboot the machine.
 
-### Create and Configure node
+### 3.2 Build Master Node
 
-#### Step 1: init master node
+#### Step 1: Init master node
 ```
 #sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 #sudo mkdir -p $HOME/.kube
@@ -250,11 +243,11 @@ For other version, please refer [https://github.com/coreos/flannel](https://gith
 
 `#sudo kubectl get pod -n kube-system -o wide`
 
-#### Step 4: Adding worker node (slave node)
+### 3.3 Adding worker node (slave node)
 
 If there are multiple server machines or AWS instances you want to add into cluster as worker node, you need to follow our perivous step install matched version of kubectl kubeadm and kubelet. 
 
-Login to your master node, use following command to get your token command for join cluster:
+Login to your master node, use following command to get your token command for joining cluster:
 
 `kubeadm token create --print-join-command`
 
@@ -262,11 +255,11 @@ You will get a output command like :
 
 `kubeadm join 192.168.54.128:6443 --token mg4o13.4ilr1oi605tj850w   --discovery-token-ca-cert-hash sha256:363b5b8525ddb86f4dc157f059e40c864223add26ef53d0cfc9becc3cbae8ad3`
 
-Using the output command on the worker node you want to add into the cluster. And check result on master node with command:
+Insert the output command on the worker nodes you want to add into cluster. Then checking adding result on master node with command:
 
 `kubectl get node`
 
-#### Step 5: Labeling your node (Optional)
+### 3.4 Labeling your node (Optional)
 If you want to create a pod that gets scheduled to you chosen node, you need to label the node first and setting nodeSelector in your pod yaml file. 
 
 Choose your nodes, and add a label to it:
@@ -299,66 +292,22 @@ spec:
   nodeSelector:
     disktype: ssd
 ```
-#### Step 6: Configure pulling from private dockerhub repository (Optional)
+## 4. Install Xilinx Runtime (XRT)
 
-If you want to pulling from a private dockerhub repository or using a private registry, there are three potential ways to do it.
+### 4.1 Install with XRT package
+For bare-metal machine you can directly install xrt packages with "sudo apt install xrt_version.deb" or "sudo yum install xrt_version.rpm". 
+XRT installation tutorial: https://xilinx.github.io/XRT/master/html/install.html
 
-You can also check k8s document for more detialed information: https://kubernetes.io/docs/concepts/containers/images/
-
-##### 1) Configuring nodes to authenticate to a private registry
-If you run Docker on your nodes, you can configure the Docker container runtime to authenticate to a private container registry. This approach is suitable if you can control node configuration. Docker stores keys for private registries in the $HOME/.dockercfg or $HOME/.docker/config.json file. If you put the same file in the search paths {cwd of kubelet}/config.json, kubelet uses it as the credential provider when pulling images.
-
-Following command need to be run as root user on all nodes you need pulling images from a private repo:
-```
-docker login
-cp /root/.docker/config.json /var/lib/kubelet/
-```
-
-##### 2) Specifying imagePullSecrets on a Pod
-You can use following command to create a secret with a docker config:
-
-```
-kubectl create secret docker-registry REGISTRY_KEY_NAME \
-  --docker-server=DOCKER_REGISTRY_SERVER \
-  --docker-username=DOCKER_USER \
-  --docker-password=DOCKER_PASSWORD \
-  --docker-email=DOCKER_EMAIL
-```
-
-And now, you can create pods which reference that secret by adding an imagePullSecrets section to a Pod definition.
-The secret may not work properly when trying to create a pod on redhat worker node, you can reference other solutions to temporary fix it.
-```
-#example yaml file for creating pod pulling from private repo with secret
-apiVersion: v1
-kind: Pod
-metadata:
-  name: foo
-  namespace: awesomeapps
-spec:
-  containers:
-    - name: foo
-      image: janedoe/awesomeapp:v1
-  imagePullSecrets:
-    - name: REGISTRY_KEY_NAME
-```
-
-##### 3) Pre-pulled images
-By default, the kubelet tries to pull each image from the specified registry. However, if the imagePullPolicy property of the container is set to IfNotPresent or Never, then a local image is used (preferentially or exclusively, respectively).
-
-
-## 4. Install Xilinx Runtime
-
-Download XRT from github, build and install it with following command line.
-
-For bare-metal machine you can directly install it with "apt install" and "yum install". Here we mainly introduce how to install XRT on AWS.
-
-### Setup tool
+### 4.2 Build XRT from source code on AWS F1 (optional)
+Here we will introduce how to build and install XRT on an AWS F1 CentOS server. 
+We will download XRT from github, build and install it with following command line.
+#### 4.2.1 Setup tool
 
 `#scl enable devtoolset-6 bash`
 
 If scl and devtoolset is not installed, then need to install the listed tools.
 
-### Setup AWS FGPA
+#### 4.2.2 Setup AWS FGPA
 
 Here need to download aws FGPA because XRT build will depend on the it.
 
@@ -366,7 +315,7 @@ Here need to download aws FGPA because XRT build will depend on the it.
 
 `#export AWS_FPGA_REPO_DIR="path of aws-fpga"`
 
-### Build and Install XRT
+#### 4.2.3 Build and Install XRT
 
 **Note:** Based on current test, XRT 2019.2.0.3 works well on AWS F1, the master version has issue on some F1 instance. So here we recommend to use 2019.2.0.3 version.
 
@@ -384,7 +333,6 @@ Here need to download aws FGPA because XRT build will depend on the it.
 #### Step 2: Install XRT
 
 `#yum install xrt_201920.2.3.0_7.7.1908-xrt.rpm`
-
 `#yum install xrt_201920.2.3.0_7.7.1908-aws.rpm`
 
 Please refer to the full instruction on how to build and install XRT:
@@ -403,18 +351,19 @@ To check the FPGA device on the system:
 
 ## 5. Install Kubernetes FPGA Plugin
 
-If you only have one node (master), and plan to deploy the FPGA plugin on this node, to enable this configuration, we need to configure the control plane node.
+If you only have one node (master) in your cluster or plan to deploy pod on master node, to enable this configuration, we need to configure the control plane node.
 
-### Control plane node isolation
+### 5.1 Control plane node isolation
 
 By default, your cluster will not schedule Pods on the control-plane node for security reasons. If you want to be able to schedule Pods on the control-plane node, e.g. for a single-machine Kubernetes cluster for development, run:
 
 `#kubectl taint nodes --all node-role.kubernetes.io/master-`
 
-### Install Kubernetes FPGA plugin
+### 5.2 Install Kubernetes FPGA plugin
 
-####   
-Step 1: down plugin source
+Following steps need to be done on your master node. After install FPGA plugin you don't need to do any other configuration when adding new nodes into the cluster.
+
+####   Step 1: Download plugin source
 
 `#git clone  https://github.com/Xilinx/FPGA_as_a_Service.git`
 
@@ -424,7 +373,7 @@ Deploy FPGA device plugin as daemonset:
 
 To check the status of daemonset:  
 
-`#kubectl get pod -n kube-system  `
+`#kubectl get daemonset -n kube-system  `
 
 Get node name:  
 
@@ -436,40 +385,67 @@ Check FPGA resource in the worker node:
 
 You should get the FPGA resources name under the pods information.
 
-#### Step 2: Deploy user pod
+## 6 Deploy user pod
+### 6.1 Edit your pod creating yaml file
+Here we use following yaml file as an example, you can found it under ./exiaws/mypod.yaml
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: my-pod
+    image: centos:bx #user needs to build use its own docker image
+    securityContext:
+      privileged: true
+    resources:
+      limits:
+        xilinx.com/fpga-xilinx_aws-vu9p-f1-04261818_dynamic_5_0-0: 1
+    command: ["/bin/sh"]
+    args: ["-c", "while true; do echo hello; sleep 10;done"]
+    volumeMounts:
+      - name: sys
+        mountPath: /sys
+  volumes:
+    - name: sys
+      hostPath:
+        path: /sys
+```
+You need to do following configuration before  you creating the pod:
+1) Modify the image to be "xilinxatg/aws-fpga-verify:20200131", you can change this to your own docker images. We will introduce how to build your own docker image at section 7 of this tutorial.
+2) You can use `kubectl describe node [nodename]` on master node to check available resources' number  and names.
+3) Modify the resources: set limits same as the that in worker node like "xilinx.com/fpga-xilinx_aws-vu9p-f1_dynamic_5_0-43981: 1". 
 
-`#kubectl create -f mypod.yaml`
 
-**Note:**
 
-1) mypod.yaml is under ./aws
-2) modify the image to be "xilinxatg/aws-fpga-verify:20200131", you can change this to your own docker images.
-3) modify the resources: set limits same as the that in worker node like "[xilinx.com/fpga-xilinx_aws-vu9p-f1_dynamic_5_0-43981](http://xilinx.com/fpga-xilinx_aws-vu9p-f1_dynamic_5_0-43981): 1". To run "kubectl describe node nodename" to find out the resource.
+### 6.2 Creat pod
+Create pod from yaml file: `#kubectl create -f mypod.yaml`
+To check status of the deployed pod: `#kubectl get pod`
+```
+NAME     READY   STATUS    RESTARTS   AGE
+my-pod   1/1     Running   0          59m
+```
+If the pod is stucked at contianer-creating step or being evicted, use `#kubectl describe pod my-pod` to check detailed information about pod creating process.
+### 6.3 Vaildate pod
+After the pod status turns to Running, run hello world in the pod:  
 
-To check status of the deployed pod:  
-
-`#kubectl get pod`
-
-#### Step 3: Run the test in pod
-after the pod status truns to Running, run hello world in the pod:  
-
-`#kubectl exec -it my-pod /bin/bash  `
+`#kubectl exec -it my-pod -- /bin/bash  `
 
 `#my-pod>source /opt/xilinx/xrt/setup.sh  `
 
-**Note:**  Need to set the INTERNAL_BUILD=1 if xbutil complain the version not match:  
-
+**Note:**  Need to set the INTERNAL_BUILD=1 if xbutil complain the version not match inside pod:  
 ```
 #my-pod>export INTERNAL_BUILD=1  
 #my-pod>xbutil scan  
 #my-pod>cd /opt/test/  
 #my-pod>./helloworld vector_addition_hw.awsxclbin
 ```
-## 6. How to build new docker image
+## 7. How to build new docker image
 
 We will use an example to explain how a new docker image with desired contents such as your xclbin, your host code etc. can be built. Please note that any accelerator (FPGA) docker image should be derived form the base docker Xilinx image **xilinxatg/aws-fpga-verify:20200131** already hosted at the Docker Hub.
 
-### Prerequisites
+### 7.1 Prerequisites
 
 To host a docker image, you need some sort of service. You can host it locally if you like (please read online docker instructions for that). However, this instruction uses [Docker Hub](https://hub.docker.com/)  as the hosting service.
 
@@ -477,10 +453,9 @@ Go to [https://hub.docker.com/signup](https://hub.docker.com/signup) to create a
 
 In this document, we are using an example docker account named as **xilinxatg**  and an example repository named as **k8s-plugin-dev**. Please substitute these by your account and repository names respectively. Also, please note that you can set your repository as private if you do not want others to see it.
 
-### Prepare docker images
+### 7.2 Prepare docker images
 
-####   
-Step 1: Login to your Docker Hub account
+####   Step 1: Login to your Docker Hub account
 
 `#docker login -u <username> -p <password>`
 
@@ -516,19 +491,13 @@ You can also use a Ubuntu or Centos/Redhat docker image as base images, and writ
 For example:
 
 ```
+#example dockerfile
 FROM ubuntu:18.04  #use ubuntu18.04 as base image
 RUN apt-get update; apt-get install -y zip sudo git python; mkdir /tmp/deploy   #install needed packages
 COPY u30_ubuntu_1804_v1.0_20201215.zip /tmp/deploy/                             #copy needed packages(this can be your xrt package) into image
 RUN unzip /tmp/deploy/u30_ubuntu_1804_v1.0_20201215.zip -d /tmp/deploy/
 WORKDIR /tmp/deploy/u30_ubuntu_1804_v1.0_20201215
 RUN ./install.sh                                                                #install packages
-WORKDIR /
-RUN rm -rf /tmp/deploy
-COPY sources.zip /opt/xilinx/
-RUN unzip /opt/xilinx/sources.zip -d /opt/xilinx/
-RUN rm /opt/xilinx/sources.zip
-RUN git clone https://github.com/gdraheim/docker-systemctl-replacement.git /usr/local/share/docker-systemctl-replacement   
-RUN echo "alias systemctl='python3 /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.py'" >> /root/.bashrc
 ```
 
 #### Step 3: Build new docker image
@@ -558,10 +527,9 @@ Please repeat the steps 2 to 4 with your desired executable contents for the cli
 
 
 
-### Verify docker image
+### 7.3 Verify docker image
 
 Use the yaml files: [aws-accelator-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/aws-accelator-pod.yaml)  and [aws-test-client-pod.yaml](https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/aws-test-client-pod.yaml)  to create accelerator and client pods respectively.
-
 
 
 #### Step 1: Create accelerator and client pods
@@ -606,3 +574,4 @@ kubernetes       ClusterIP     10.96.0.1        <none>      443/TCP       14d
 **Note:**
 
 **If the status of the accelerator pod shows as pending, please check whether the card is already assigned to another running pod. If so, please delete the running pod and recreate the accelerator pod.**
+
