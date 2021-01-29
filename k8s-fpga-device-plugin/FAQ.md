@@ -16,12 +16,10 @@ The above problem is due to missing /etc/OpenCL/vendors/xilinx.icd inside contai
 docker cp /etc/OpenCL/vendors/xilinx.icd containerID:/etc/OpenCL/vendors/xilinx.icd
 ```
 
-## Question: When creating a pod, what I need to do if I want to use an image from private docker repository? ##
+## Question: K8s can not pulling image when creating pod on Redhat worker nodes with image from Private Docker Repo. ##
 
 **Answer:**
-If you want to pulling from a private dockerhub repository or using a private registry, there are three potential ways to do it.
-
-You can also check k8s document for more detialed information: https://kubernetes.io/docs/concepts/containers/images/
+If you want to pulling from a private dockerhub repository or using a private registry, there are three ways to do it, we have verified the solultoin 1 and 2 work on Redhat node. This situation only happens when you use secret to pull images on a Redhat Node.
 
 ##### 1) Configuring nodes to authenticate to a private registry
 If you run Docker on your nodes, you can configure the Docker container runtime to authenticate to a private container registry. This approach is suitable if you can control node configuration. Docker stores keys for private registries in the $HOME/.dockercfg or $HOME/.docker/config.json file. If you put the same file in the search paths {cwd of kubelet}/config.json, kubelet uses it as the credential provider when pulling images.
@@ -31,8 +29,10 @@ Following command need to be run as root user on all nodes you need pulling imag
 docker login
 cp /root/.docker/config.json /var/lib/kubelet/
 ```
+##### 2) Pre-pulled images
+By default, the kubelet tries to pull each image from the specified registry. However, if the imagePullPolicy property of the container is set to IfNotPresent or Never, then a local image is used (preferentially or exclusively, respectively).
 
-##### 2) Specifying imagePullSecrets on a Pod
+##### 3) Specifying imagePullSecrets on a Pod
 You can use following command to create a secret with a docker config:
 
 ```
@@ -60,6 +60,4 @@ spec:
     - name: REGISTRY_KEY_NAME
 ```
 
-##### 3) Pre-pulled images
-By default, the kubelet tries to pull each image from the specified registry. However, if the imagePullPolicy property of the container is set to IfNotPresent or Never, then a local image is used (preferentially or exclusively, respectively).
-
+You can also check k8s document for more detialed information: https://kubernetes.io/docs/concepts/containers/images
