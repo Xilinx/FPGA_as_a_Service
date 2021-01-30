@@ -223,7 +223,7 @@ Check port status:
 
 `#netstat -nltp | grep apiserver`
 
-Adding environment variable in ~/.bash_porfile
+Adding environment variable in ~/.bash_profile
 
 `#export KUBECONFIG=/etc/kubernetes/admin.conf`
 
@@ -419,15 +419,15 @@ You need to do following configuration before  you creating the pod:
 
 
 
-### 6.2 Creat pod
+### 6.2 Create pod
 Create pod from yaml file: `#kubectl create -f mypod.yaml`
 To check status of the deployed pod: `#kubectl get pod`
 ```
 NAME     READY   STATUS    RESTARTS   AGE
 my-pod   1/1     Running   0          59m
 ```
-If the pod is stucked at contianer-creating step or being evicted, use `#kubectl describe pod my-pod` to check detailed information about pod creating process.
-### 6.3 Vaildate pod
+If the pod is stuck at container-creating step or being evicted, use `#kubectl describe pod my-pod` to check detailed information about pod creating process.
+### 6.3 Validate pod
 After the pod status turns to Running, run hello world in the pod:  
 
 `#kubectl exec -it my-pod -- /bin/bash  `
