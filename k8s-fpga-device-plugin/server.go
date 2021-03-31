@@ -65,8 +65,12 @@ func NewFPGADevicePlugin() *FPGADevicePlugin {
 		for {
 			devices, err := GetDevices()
 			if err != nil {
-				log.Errorf("Error to get FPGA devices: %v", err)
-				break
+				time.Sleep(75 * time.Second)
+				devices, err = GetDevices()
+				if err != nil {
+					log.Errorf("Error to get FPGA devices: %v", err)
+					break
+				}
 			}
 			devMap := make(map[string]map[string]Device)
 			for _, device := range devices {
@@ -81,7 +85,8 @@ func NewFPGADevicePlugin() *FPGADevicePlugin {
 					subMap[id] = device
 				}
 			}
-			//log.Debugf("newly reported FPGA device list: %v", devMap)
+			// log.Printf("newly reported FPGA device list: %v", devMap)
+			// log.Debugf("newly reported FPGA device list: %v", devMap)
 			updateChan <- devMap
 			time.Sleep(5 * time.Second)
 		}
