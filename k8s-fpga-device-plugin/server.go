@@ -124,6 +124,8 @@ func (m *FPGADevicePlugin) checkDeviceUpdate(n map[string]map[string]Device) {
 				os.Exit(1)
 			}
 			m.servers[aDevType].update <- aDevices
+			//log.Println("checkDeviceUpdate-devtype: %v", aDevType)
+			//log.Println("checkDeviceUpdate-devices: %v", aDevices)
 		}(aDevType, aDevices, resourceNamePrefix+"-"+aDevType)
 	}
 
@@ -267,11 +269,34 @@ func (m *FPGADevicePluginServer) Register(kubeletEndpoint, resourceName string) 
 	return nil
 }
 
+func IsContain(items []string, item string) bool {
+	for _, eachItem := range items {
+		if eachItem == item {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *FPGADevicePluginServer) sendDevices(s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	resp := new(pluginapi.ListAndWatchResponse)
-	for _, device := range m.devices {
-		resp.Devices = append(resp.Devices, &pluginapi.Device{device.DBDF, device.Healthy})
+
+	test_range := m.devices
+	SerialNums := []string{}
+	for _, device := range test_range {
+		if IsContain(SerialNums, device.SN) {
+			log.Printf("Same serial number device already exists")
+		} else {
+			if device.SN == "" {
+				log.Debugf("Error, Device %v has empty Serial number", device.DBDF)
+				log.Printf("Error, Device %v has empty Serial number", device.DBDF)
+			} else {
+				SerialNums = append(SerialNums, device.SN)
+				resp.Devices = append(resp.Devices, &pluginapi.Device{device.DBDF, device.Healthy})
+			}
+		}
 	}
+	//log.Printf("Check SeialNums arry: %v", SerialNums)
 	log.Printf("Sending %d device(s) %v to kubelet", len(resp.Devices), resp.Devices)
 	if err := s.Send(resp); err != nil {
 		m.Stop()
@@ -297,11 +322,23 @@ func (m *FPGADevicePluginServer) ListAndWatch(e *pluginapi.Empty, s pluginapi.De
 func (m *FPGADevicePluginServer) Allocate(ctx context.Context, req *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	log.Debugf("In Allocate()")
 	response := new(pluginapi.AllocateResponse)
-
 	for _, creq := range req.ContainerRequests {
 		log.Debugf("Request IDs: %v", creq.DevicesIDs)
+
 		cres := new(pluginapi.ContainerAllocateResponse)
-		for _, id := range creq.DevicesIDs {
+
+		// Check same serial number devices
+		deviceIDs_arry := creq.DevicesIDs
+		for id2 := range deviceIDs_arry {
+			for _, device := range m.devices {
+				if device.SN == m.devices[deviceIDs_arry[id2]].SN && IsContain(deviceIDs_arry, device.DBDF) == false {
+					deviceIDs_arry = append(deviceIDs_arry, device.DBDF)
+				}
+			}
+		}
+		//log.Println("Check final allocate: %v", deviceIDs_arry)
+
+		for _, id := range deviceIDs_arry {
 			log.Printf("Receiving request %s", id)
 			dev, ok := m.devices[id]
 			if !ok {
