@@ -192,13 +192,13 @@ func GetDevices() ([]Device, error) {
 				time.Sleep(10 * time.Second)
 				romFolder, err = GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), ROMSTR)
 				if romFolder != "" {
+					time.Sleep(20 * time.Second)
 					break
 				}
 				fmt.Println(count, pciID, romFolder, err)
 				count += 1
 			}
 			SNFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), SNSTR)
-			// Need to confirm if this will be reset as romfolder
 			if err != nil {
 				return nil, err
 			}
