@@ -307,9 +307,9 @@ We will download XRT from github, build and install it with following command li
 
 If scl and devtoolset is not installed, then need to install the listed tools.
 
-#### 4.2.2 Setup AWS FGPA
+#### 4.2.2 Setup AWS FPGA
 
-Here need to download aws FGPA because XRT build will depend on the it.
+Here need to download aws FPGA because XRT build will depend on the it.
 
 `#git clone http://github.com/aws/aws-fpga.git`
 
