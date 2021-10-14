@@ -35,7 +35,7 @@ spec:
       - key: CriticalAddonsOnly
         operator: Exists
       containers:
-      - image: xilinxatg/xilinx_k8s_fpga_plugin:2020.11.24
+      - image: xilinxatg/xilinx_k8s_fpga_plugin:1.0.100
         name: xilinx-fpga-device-plugin
         securityContext:
           allowPrivilegeEscalation: false
