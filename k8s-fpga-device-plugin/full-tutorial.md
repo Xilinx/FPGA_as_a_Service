@@ -341,8 +341,13 @@ Please refer to the full instruction on how to build and install XRT:
 
 `#source /opt/xilinx/xrt/setup.sh`
 
-To check the FPGA device on the system:
-
+To check the FPGA devices on the system:
+```
+#systemctl start mpd
+#systemctl status mpd
+#xbutil examine
+```
+If you are using XRT version earlier than 2022.1, use following commands to check FPGA devices
 ```
 #systemctl start mpd
 #systemctl status mpd
