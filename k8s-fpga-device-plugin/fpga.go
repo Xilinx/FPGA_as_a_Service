@@ -1,5 +1,5 @@
-// Copyright 2018 Xilinx Corporation. All Rights Reserved.
-// Author: Brian Xu(brianx@xilinx.com)
+// Copyright 2018-2021 Xilinx Corporation. All Rights Reserved.
+// FPGA as a Service (k8s_dev@xilinx.com)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -224,10 +224,15 @@ func GetDevices() ([]Device, error) {
 			}
 			devid := content
 			// get Serial Number
+			// AWS F1 device has no serial numbers, adding default serial number "F1-Node" for each AWS F1 device
 			fname = path.Join(SysfsDevices, pciID, SNFolder, SNFile)
 			content, err = GetFileContent(fname)
 			if err != nil {
-				return nil, err
+				if strings.EqualFold(vendorID, AWS_ID) == true {
+					content = "F1-Node"
+				} else {
+					return nil, err
+				}
 			}
 			SN := content
 			// get user PF node

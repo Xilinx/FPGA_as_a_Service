@@ -1,5 +1,5 @@
-// Portions Copyright 2018 Xilinx Inc.
-// Author: Brian Xu(brianx@xilinx.com)
+// Portions Copyright 2018-2021 Xilinx Inc.
+// FPGA as a Service (k8s_dev@xilinx.com)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,22 +16,23 @@ package main
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 	"net"
 	"os"
 	"path"
 	"reflect"
 	_ "runtime/debug"
+	"strings"
 	"time"
-
-	log "github.com/Sirupsen/logrus"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
 const (
 	resourceNamePrefix = "xilinx.com/fpga"
 	serverSockPath     = pluginapi.DevicePluginPath
+	AWS_SN             = "F1-Node"
 )
 
 // FPGADevicePluginServer implements the Kubernetes device plugin API
@@ -85,8 +86,6 @@ func NewFPGADevicePlugin() *FPGADevicePlugin {
 					subMap[id] = device
 				}
 			}
-			// log.Printf("newly reported FPGA device list: %v", devMap)
-			// log.Debugf("newly reported FPGA device list: %v", devMap)
 			updateChan <- devMap
 			time.Sleep(5 * time.Second)
 		}
@@ -115,9 +114,6 @@ func (m *FPGADevicePlugin) checkDeviceUpdate(n map[string]map[string]Device) {
 		added[nDevType] = nDevices
 	}
 
-	//log.Debugf("added FPGA device list: %v", added)
-	//log.Debugf("removed FPGA device list: %v", removed)
-	//log.Debugf("updated FPGA device list: %v", updated)
 	//create new server for added devices
 	for aDevType, aDevices := range added {
 		devicePluginServer := m.NewFPGADevicePluginServer(aDevType, aDevices)
@@ -129,8 +125,6 @@ func (m *FPGADevicePlugin) checkDeviceUpdate(n map[string]map[string]Device) {
 				os.Exit(1)
 			}
 			m.servers[aDevType].update <- aDevices
-			//log.Println("checkDeviceUpdate-devtype: %v", aDevType)
-			//log.Println("checkDeviceUpdate-devices: %v", aDevices)
 		}(aDevType, aDevices, resourceNamePrefix+"-"+aDevType)
 	}
 
@@ -275,8 +269,9 @@ func (m *FPGADevicePluginServer) Register(kubeletEndpoint, resourceName string) 
 }
 
 func IsContain(items []string, item string) bool {
+	AWS_SN := "F1-Node"
 	for _, eachItem := range items {
-		if eachItem == item {
+		if eachItem == item && strings.EqualFold(item, AWS_SN) != true {
 			return true
 		}
 	}
@@ -289,11 +284,10 @@ func (m *FPGADevicePluginServer) sendDevices(s pluginapi.DevicePlugin_ListAndWat
 	test_range := m.devices
 	SerialNums := []string{}
 	for _, device := range test_range {
-		if IsContain(SerialNums, device.SN) {
+		if IsContain(SerialNums, device.SN) && device.SN != "" {
 			log.Printf("Same serial number device already exists")
 		} else {
 			if device.SN == "" {
-				log.Debugf("Error, Device %v has empty Serial number", device.DBDF)
 				log.Printf("Error, Device %v has empty Serial number", device.DBDF)
 			} else {
 				SerialNums = append(SerialNums, device.SN)
@@ -301,7 +295,7 @@ func (m *FPGADevicePluginServer) sendDevices(s pluginapi.DevicePlugin_ListAndWat
 			}
 		}
 	}
-	//log.Printf("Check SeialNums arry: %v", SerialNums)
+	log.Printf("Check SeialNums arry: %v", SerialNums)
 	log.Printf("Sending %d device(s) %v to kubelet", len(resp.Devices), resp.Devices)
 	if err := s.Send(resp); err != nil {
 		m.Stop()
@@ -326,22 +320,23 @@ func (m *FPGADevicePluginServer) ListAndWatch(e *pluginapi.Empty, s pluginapi.De
 // Allocate which return list of devices.
 func (m *FPGADevicePluginServer) Allocate(ctx context.Context, req *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	log.Debugf("In Allocate()")
+	AWS_SN := "F1-Node"
 	response := new(pluginapi.AllocateResponse)
 	for _, creq := range req.ContainerRequests {
 		log.Debugf("Request IDs: %v", creq.DevicesIDs)
 
 		cres := new(pluginapi.ContainerAllocateResponse)
 
-		// Check same serial number devices
+		// Check same serial number devices, devices with same serail number "F1-node" will be marked as independent devices
 		deviceIDs_arry := creq.DevicesIDs
 		for id2 := range deviceIDs_arry {
 			for _, device := range m.devices {
-				if device.SN == m.devices[deviceIDs_arry[id2]].SN && IsContain(deviceIDs_arry, device.DBDF) == false {
+				if device.SN == m.devices[deviceIDs_arry[id2]].SN && strings.EqualFold(device.SN, AWS_SN) != true && IsContain(deviceIDs_arry, device.DBDF) == false {
 					deviceIDs_arry = append(deviceIDs_arry, device.DBDF)
 				}
 			}
 		}
-		//log.Println("Check final allocate: %v", deviceIDs_arry)
+		log.Println("Check final allocate: %v", deviceIDs_arry)
 
 		for _, id := range deviceIDs_arry {
 			log.Printf("Receiving request %s", id)

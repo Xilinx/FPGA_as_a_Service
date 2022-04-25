@@ -1,5 +1,5 @@
-#Copyright 2018 Xilinx Corporation. All Rights Reserved.
-#Author: Brian Xu(brianx@xilinx.com)
+#Copyright 2018-2021 Xilinx Corporation. All Rights Reserved.
+##FPGA as a Service (k8s_dev@xilinx.com)
 #
 #Licensed under the Apache License, Version 2.0 (the "License");
 #you may not use this file except in compliance with the License.
@@ -13,7 +13,8 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 FROM ubuntu:16.04
-
+RUN mkdir -p /opt/xilinx/k8s-fpga-device-plugin/
+COPY version_num /opt/xilinx/k8s-fpga-device-plugin/
 COPY bin/k8s-fpga-device-plugin /usr/local/bin/
 
 ENTRYPOINT ["k8s-fpga-device-plugin"]

@@ -1,5 +1,5 @@
-// Portions Copyright 2018 Xilinx Inc.
-// Author: Brian Xu(brianx@xilinx.com)
+// Portions Copyright 2018-2021 Xilinx Inc.
+// FPGA as a Service (k8s_dev@xilinx.com)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,12 +16,14 @@ package main
 
 import (
 	"flag"
-	"os"
-	"syscall"
-
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/fsnotify/fsnotify"
+	"io/ioutil"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
+	"os"
+	"strings"
+	"syscall"
 )
 
 func main() {
@@ -36,7 +38,13 @@ func main() {
 	case "info":
 		log.SetLevel(log.InfoLevel)
 	}
-
+	version_path := "/opt/xilinx/k8s-fpga-device-plugin/version_num"
+	if version_file, err := ioutil.ReadFile(version_path); err != nil {
+		fmt.Errorf("Can't read version file %s", version_path)
+	} else {
+		version := strings.Trim(string(version_file), "\n")
+		log.Println("Plugin Version:", version)
+	}
 	log.Println("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	if err != nil {
