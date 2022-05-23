@@ -17,7 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/fsnotify/fsnotify"
 	"io/ioutil"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
