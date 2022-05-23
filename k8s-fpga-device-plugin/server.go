@@ -184,6 +184,10 @@ func (m *FPGADevicePluginServer) deviceExists(id string) bool {
 	return false
 }
 
+func (m *FPGADevicePluginServer) GetPreferredAllocation(ctx context.Context, rqt *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
+	return new(pluginapi.PreferredAllocationResponse), nil
+}
+
 func (m *FPGADevicePluginServer) PreStartContainer(ctx context.Context, rqt *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
 	return nil, fmt.Errorf("PreStartContainer() should not be called")
 }
@@ -291,7 +295,7 @@ func (m *FPGADevicePluginServer) sendDevices(s pluginapi.DevicePlugin_ListAndWat
 				log.Printf("Error, Device %v has empty Serial number", device.DBDF)
 			} else {
 				SerialNums = append(SerialNums, device.SN)
-				resp.Devices = append(resp.Devices, &pluginapi.Device{device.DBDF, device.Healthy})
+				resp.Devices = append(resp.Devices, &pluginapi.Device{ID: device.DBDF, Health: device.Healthy})
 			}
 		}
 	}

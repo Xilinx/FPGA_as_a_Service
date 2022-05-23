@@ -1,0 +1,3 @@
+module github.com/Xilinx/FPGA_as_a_Service
+
+go 1.16
