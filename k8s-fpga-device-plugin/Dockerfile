@@ -12,9 +12,19 @@
 #WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #See the License for the specific language governing permissions and
 #limitations under the License.
-FROM ubuntu:16.04
-RUN mkdir -p /opt/xilinx/k8s-fpga-device-plugin/
-COPY version_num /opt/xilinx/k8s-fpga-device-plugin/
-COPY bin/k8s-fpga-device-plugin /usr/local/bin/
+FROM golang:latest as builder
 
-ENTRYPOINT ["k8s-fpga-device-plugin"]
+# Define working directory.
+WORKDIR /opt/xilinx-device-plugin
+
+COPY . .
+RUN	go env -w GO111MODULE=auto
+RUN ./build
+    
+FROM debian:bullseye-slim
+
+LABEL maintainer="k8s_dev@xilinx.com <k8s_dev@xilinx.com>"
+
+
+COPY --from=builder /opt/xilinx-device-plugin/bin /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/xilinx-device-plugin"]
