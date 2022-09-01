@@ -11,23 +11,19 @@ All cmds mentioned in this part run on the master node of k8s cluster. The outpu
  If you already deployed the device plugin on your cluster, before migrating to version 1.1.0+ or updating the env config value in yaml file, you need to remove the device plugin daemonset and all pods you created with FPGA resources allocated.
 ```
 Check existing device plugin daemonset
-#kubectl get daemonset -n kube-system
+$ kubectl get daemonset -n kube-system
 
 Remove existing device plugin daemonset
-- device plugin version 1.1.0 and previous :
-#kubectl delete daemonset fpga-device-plugin-daemonset -n kube-system
-
-- device plugin version 1.1.0+ :
-#kubectl delete daemonset device-plugin-daemonset -n kube-system
+$ kubectl delete daemonset <device plugin daemonset name> -n kube-system
 
 Check all created user pods :
-#kubectl get pod
+$ kubectl get pod
 
 Check user pod allocated resrouces :
-#kubectl describe pod <pod-name>
+$ kubectl describe pod <pod-name>
 
 Delete Pod with FPGA(Alveo) devices allocated :
-#kubectl delete pod <pod-name>
+$ kubectl delete pod <pod-name>
 ```
 
 ####  Config yaml file (Only required for Alveo U30 device and AWS VT1 node)
@@ -59,7 +55,7 @@ If any of the input values for U30NameConvention/U30AllocUnit is empty or invali
 
 #### Deploy FPGA device plugin as daemonset
 ```
-$kubectl create -f fpga-device-plugin.yml
+$kubectl create -f k8s-device-plugin.yml
 ```
 #### Check status of daemonset pod
 ```
