@@ -1,0 +1,14 @@
+#!/bin/sh
+
+PLUGIN=aws-fpga-device-plugin
+
+FMT="*.go"
+echo "Checking gofmt..."
+fmtRes=$(gofmt -l $FMT)
+if [ -n "${fmtRes}" ]; then
+    echo -e "gofmt checking failed:\n${fmtRes}"
+    exit 255
+fi
+
+echo "Building plugins"
+go build -o $PLUGIN 

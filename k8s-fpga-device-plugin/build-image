@@ -1,8 +1,0 @@
-#!/bin/sh
-echo "Building plugins images..."
-
-docker build -t xilinxatg/xilinx_k8s_fpga_plugin:VERSION .  #replace with your own dockerhub repo and tag here
-
-echo "Building finished, now check your new docker image."
-
-#THis script is not must required. You can direct use docker command to generate docker image.
