@@ -1,0 +1,18 @@
+#!/bin/sh
+REPO_PATH="."
+export GOPATH=${PWD}
+
+export GO15VENDOREXPERIMENT=1
+export GOBIN=${PWD}/bin
+
+FMT="*.go"
+echo "Checking gofmt..."
+fmtRes=$(gofmt -l $FMT)
+if [ -n "${fmtRes}" ]; then
+    echo -e "gofmt checking failed:\n${fmtRes}"
+    exit 255
+fi
+
+echo "Building plugins"
+go install "$@" ${REPO_PATH}
+mv bin/k8s-device-plugin bin/k8s-fpga-device-plugin
