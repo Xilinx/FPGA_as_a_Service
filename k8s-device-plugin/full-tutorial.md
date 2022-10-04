@@ -361,6 +361,11 @@ By default, your cluster will not schedule Pods on the control-plane node for se
 ```
 $ kubectl taint nodes --all node-role.kubernetes.io/master-
 ```
+For Kubernetes version 1.25+, use following command instead to isolate the master node:
+```
+$ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+```
+
 ### 5.2 Check and remvoe existing device plugin
 
  If you already deployed the device plugin on your cluster, before migrating to version 1.1.0+ or updating the env config value in yaml file, you need to remove the device plugin daemonset and all pods you created with FPGA resources allocated.
