@@ -9,3 +9,6 @@
 [submodule "XRM"]
 	path = XRM
 	url = https://github.com/Xilinx/XRM.git
+[submodule "Xilinx_Container_Runtime"]
+	path = Xilinx_Container_Runtime
+	url = https://gitenterprise.xilinx.com/FaaSApps/Xilinx_Container_Runtime.git

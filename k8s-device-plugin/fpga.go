@@ -1,4 +1,5 @@
-// Copyright 2018-2022 Xilinx Corporation. All Rights Reserved.
+// Copyright 2018-2022, Xilinx, Inc.
+// Copyright 2023, Advanced Micro Device, Inc.
 // Author: Brian Xu(brianx@xilinx.com)
 // For technical support, please contact k8s_dev@amd.com
 //
@@ -19,7 +20,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
+	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 	"os"
 	"path"
 	"strconv"
@@ -37,9 +38,11 @@ const (
 	DRMSTR         = "renderD"
 	ROMSTR         = "rom"
 	SNSTR          = "xmc.u."
+	SNSTRV70       = "hwmon_sdm.u."
 	DSAverFile     = "VBNV"
 	DSAtsFile      = "timestamp"
 	InstanceFile   = "instance"
+	UUID           = "logic_uuids"
 	MgmtFile       = "mgmt_pf"
 	UserFile       = "user_pf"
 	VendorFile     = "vendor"
@@ -60,14 +63,16 @@ type Pairs struct {
 }
 
 type Device struct {
-	index     string
-	shellVer  string
-	timestamp string
-	DBDF      string // this is for user pf
-	deviceID  string //devid of the user pf
-	Healthy   string
-	SN        string
-	Nodes     *Pairs
+	index      string
+	shellVer   string
+	deviceType string
+	uuid       string
+	timestamp  string
+	DBDF       string // this is for user pf
+	deviceID   string //devid of the user pf
+	Healthy    string
+	SN         string
+	Nodes      *Pairs
 }
 
 func GetInstance(DBDF string) (string, error) {
@@ -201,10 +206,6 @@ func GetDevices() ([]Device, error) {
 				fmt.Println(count, pciID, romFolder, err)
 				count += 1
 			}
-			SNFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), SNSTR)
-			if err != nil {
-				return nil, err
-			}
 			// get dsa version
 			fname = path.Join(SysfsDevices, pciID, romFolder, DSAverFile)
 			content, err := GetFileContent(fname)
@@ -215,6 +216,8 @@ func GetDevices() ([]Device, error) {
 				content = U30CommonShell
 			}
 			dsaVer := content
+			// get dsa type from dsa version
+			dsaType := strings.Split(dsaVer, "_")[1]
 			// get dsa timestamp
 			fname = path.Join(SysfsDevices, pciID, romFolder, DSAtsFile)
 			content, err = GetFileContent(fname)
@@ -222,6 +225,13 @@ func GetDevices() ([]Device, error) {
 				return nil, err
 			}
 			dsaTs := content
+			// get dsa uuid
+			fname = path.Join(SysfsDevices, pciID, UUID)
+			content, err = GetFileContent(fname)
+			if err != nil {
+				return nil, err
+			}
+			dsaUUID := content[len(content)-6 : len(content)]
 			// get device id
 			fname = path.Join(SysfsDevices, pciID, DeviceFile)
 			content, err = GetFileContent(fname)
@@ -229,6 +239,22 @@ func GetDevices() ([]Device, error) {
 				return nil, err
 			}
 			devid := content
+
+			//get file path for Serial Number
+			SNFolder := ""
+			if strings.EqualFold(dsaType, "v70") == true {
+				SNFolder, err = GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), SNSTRV70)
+				if err != nil {
+					return nil, err
+				}
+
+			} else {
+				SNFolder, err = GetFileNameFromPrefix(path.Join(SysfsDevices, pciID), SNSTR)
+				if err != nil {
+					return nil, err
+				}
+
+			}
 			// get Serial Number
 			// AWS F1 device has no serial numbers, adding default serial number "F1-Node" for each AWS F1 device
 			fname = path.Join(SysfsDevices, pciID, SNFolder, SNFile)
@@ -236,8 +262,11 @@ func GetDevices() ([]Device, error) {
 			if err != nil {
 				if strings.EqualFold(vendorID, AWS_ID) == true {
 					content = "F1-Node"
-				} else {
+				} else if strings.EqualFold(dsaType, "u30") == true {
+					fmt.Println("No Serial Number detected, Serial Number is must required for u30 device")
 					return nil, err
+				} else {
+					fmt.Println("Device has no serial number detected")
 				}
 			}
 			SN := content
@@ -267,16 +296,35 @@ func GetDevices() ([]Device, error) {
 			//TODO: check temp, power, fan speed etc, to give a healthy level
 			//so far, return Healthy
 			healthy := pluginapi.Healthy
-			devices = append(devices, Device{
-				index:     strconv.Itoa(len(devices) + 1),
-				shellVer:  dsaVer,
-				timestamp: dsaTs,
-				DBDF:      userDBDF,
-				deviceID:  devid,
-				Healthy:   healthy,
-				SN:        SN,
-				Nodes:     pairMap[DBD],
-			})
+			if strings.EqualFold(VirtualDev, "True") {
+				for i := 0; i < VirtualNum; i++ {
+					devices = append(devices, Device{
+						index:      strconv.Itoa(len(devices) + 1),
+						shellVer:   dsaVer,
+						deviceType: dsaType,
+						uuid:       dsaUUID,
+						timestamp:  dsaTs,
+						DBDF:       userDBDF + "-" + strconv.Itoa(i),
+						deviceID:   devid,
+						Healthy:    healthy,
+						SN:         SN,
+						Nodes:      pairMap[DBD],
+					})
+				}
+			} else {
+				devices = append(devices, Device{
+					index:      strconv.Itoa(len(devices) + 1),
+					shellVer:   dsaVer,
+					deviceType: dsaType,
+					uuid:       dsaUUID,
+					timestamp:  dsaTs,
+					DBDF:       userDBDF,
+					deviceID:   devid,
+					Healthy:    healthy,
+					SN:         SN,
+					Nodes:      pairMap[DBD],
+				})
+			}
 		} else if IsMgmtPf(pciID) { //mgmt pf
 			// get mgmt instance
 			fname = path.Join(SysfsDevices, pciID, InstanceFile)
@@ -292,22 +340,24 @@ func GetDevices() ([]Device, error) {
 
 /*
 func main() {
-        devices, err := GetDevices()
+	devices, err := GetDevices()
 	if err != nil {
-                fmt.Printf("%s !!!\n", err)
-                return
-        }
+		fmt.Printf("%s !!!\n", err)
+		return
+	}
 
-        //SNFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, "0000:e3:00.1"), SNSTR)
+	//SNFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, "0000:e3:00.1"), SNSTR)
 	//fname := path.Join(SysfsDevices, "0000:e3:00.1", SNFolder, SNFile)
 	//content, err := GetFileContent(fname)
 	//SN := content
 	//fmt.Printf("SN: %v \n", SN)
-        for _, device := range devices {
-                fmt.Printf("Device: %v \n", device)
-                fmt.Printf("Timestamp: %v \n",device.timestamp)
-                fmt.Printf("SN: %v  \n", device.SN)
-                fmt.Printf("ID: %s  \n\n", device.deviceID)
-        }
+	for _, device := range devices {
+		fmt.Printf("Device: %v \n", device)
+		fmt.Printf("Type: %v \n", device.deviceType)
+		fmt.Printf("UUID: %v \n", device.uuid)
+		fmt.Printf("Timestamp: %v \n", device.timestamp)
+		fmt.Printf("SN: %v  \n", device.SN)
+		fmt.Printf("ID: %s  \n\n", device.deviceID)
+	}
 }
 */

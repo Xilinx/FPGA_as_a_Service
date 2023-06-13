@@ -1,4 +1,5 @@
-// Copyright 2018-2022 Xilinx Corporation. All Rights Reserved.
+// Copyright 2018-2022, Xilinx, Inc.
+// Copyright 2023, Advanced Micro Device, Inc.
 // Author: Brian Xu(brianx@xilinx.com)
 // For technical support, please contact k8s_dev@amd.com
 //
@@ -17,19 +18,22 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"github.com/fsnotify/fsnotify"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
+	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 )
 
 var (
-	U30NameConvention = "CommonName"
-	U30AllocUnit      = "Card"
+	U30NameConvention   = "CommonName"
+	U30AllocUnit        = "Card"
+	DeviceNameCustomize = "False"
+	VirtualDev          = "False"
+	VirtualNum          = 1
 )
 
 func main() {
@@ -44,9 +48,10 @@ func main() {
 	case "info":
 		log.SetLevel(log.InfoLevel)
 	}
-	version_path := "/opt/xilinx/k8s-fpga-device-plugin/version_num"
+
+	version_path := "/opt/xilinx/k8s-device-plugin/version_num"
 	if version_file, err := ioutil.ReadFile(version_path); err != nil {
-		fmt.Errorf("Can't read version file %s", version_path)
+		log.Println("Can't read version file %s", version_path)
 	} else {
 		version := strings.Trim(string(version_file), "\n")
 		log.Println("Plugin Version:", version)
@@ -68,6 +73,30 @@ func main() {
 		log.Println("Set U30AllocUnit: Card")
 		U30AllocUnit = "Card"
 	}
+	ReadDeviceNameCustomize := os.Getenv("DeviceNameCustomize")
+	if strings.EqualFold(ReadDeviceNameCustomize, "True") {
+		log.Println("Set DeviceNameCustomize: True")
+		DeviceNameCustomize = "True"
+	} else {
+		log.Println("Set DeviceNameCustomize: False")
+		DeviceNameCustomize = "False"
+	}
+
+	ReadVirtualDev := os.Getenv("VirtualDev")
+	if strings.EqualFold(ReadVirtualDev, "True") {
+		log.Println("Virtual Device Mode: On")
+		VirtualDev = "True"
+	} else {
+		log.Println("Virtual Device Mode: OFF")
+		VirtualDev = "False"
+	}
+	ReadVirtualNum := os.Getenv("VirtualNum")
+	VirtualNum, _ = strconv.Atoi(ReadVirtualNum)
+	if VirtualNum < 1 {
+		log.Warn("Invalid input for VirtualNum, will set VirtualNum as 1")
+		VirtualNum = 1
+	}
+	log.Println("VirtualNum:", VirtualNum)
 
 	log.Println("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)

@@ -1,4 +1,5 @@
-#Copyright 2018-2022 Xilinx Corporation. All Rights Reserved.
+#Copyright 2018-2022, Xilinx, Inc.
+#Copyright 2023, Advanced Micro Device, Inc.
 #Author: Brian Xu(brianx@xilinx.com)
 #For technical support, please contact k8s_dev@amd.com
 #
@@ -27,16 +28,13 @@ spec:
       name: device-plugin
   template:
     metadata:
-      annotations:
-        scheduler.alpha.kubernetes.io/critical-pod: ""
       labels:
         name: device-plugin
     spec:
       tolerations:
-      - key: CriticalAddonsOnly
-        operator: Exists
+      priorityClassName: "system-node-critical"
       containers:
-      - image: public.ecr.aws/xilinx_dcg/k8s-device-plugin:1.1.0
+      - image: public.ecr.aws/xilinx_dcg/k8s-device-plugin:1.2.0
         name: device-plugin
         env:
         - name: U30NameConvention
@@ -54,3 +52,4 @@ spec:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
+

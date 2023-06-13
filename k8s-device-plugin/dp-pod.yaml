@@ -1,4 +1,5 @@
-#Copyright 2018-2022 Xilinx Corporation. All Rights Reserved.
+#Copyright 2018-2022, Xilinx, Inc.
+#Copyright 2023, Advanced Micro Device, Inc.
 #Author: Brian Xu(brianx@xilinx.com)
 #For technical support, please contact k8s_dev@amd.com
 #
@@ -23,7 +24,7 @@ spec:
     image: xilinxatg/fpga-verify:latest
     resources:
       limits:
-        amd.com/xilinx_u50_gen3x16_xdma_201920_3-0: 1
+        amd.com/xilinx_u200_gen3x16_xdma_base_2-0: 1
     command: ["/bin/sh"]
     args: ["-c", "while true; do echo hello; sleep 10;done"]	
 
