@@ -1,4 +1,5 @@
-// Copyright 2018-2022 Xilinx Corporation. All Rights Reserved.
+// Copyright 2018-2022, Xilinx, Inc.
+// Copyright 2023, Advanced Micro Device, Inc.
 // Author: Brian Xu(brianx@xilinx.com)
 // For technical support, please contact k8s_dev@amd.com
 //

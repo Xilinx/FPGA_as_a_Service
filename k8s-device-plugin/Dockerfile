@@ -1,4 +1,5 @@
-#Copyright 2018-2022 Xilinx Corporation. All Rights Reserved.
+# Copyright 2018-2022, Xilinx, Inc.
+# Copyright 2023, Advanced Micro Device, Inc.
 #Author: Brian Xu(brianx@xilinx.com)
 #For technical support, please contact k8s_dev@amd.com
 #
@@ -13,9 +14,9 @@
 #WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #See the License for the specific language governing permissions and
 #limitations under the License.
-FROM ubuntu:16.04
-RUN mkdir -p /opt/xilinx/k8s-fpga-device-plugin/
-COPY version_num /opt/xilinx/k8s-fpga-device-plugin/
-COPY bin/k8s-fpga-device-plugin /usr/local/bin/
+FROM ubuntu:20.04
+RUN mkdir -p /opt/xilinx/k8s-device-plugin/
+COPY version_num /opt/xilinx/k8s-device-plugin/
+COPY bin/k8s-device-plugin /usr/local/bin/
 
-ENTRYPOINT ["k8s-fpga-device-plugin"]
+ENTRYPOINT ["k8s-device-plugin"]
