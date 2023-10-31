@@ -24,7 +24,7 @@ spec:
     image: xilinxatg/fpga-verify:latest
     resources:
       limits:
-        amd.com/xilinx_u200_gen3x16_xdma_base_2-0: 1
+        amd.com/MA35: 1
     command: ["/bin/sh"]
     args: ["-c", "while true; do echo hello; sleep 10;done"]	
 
