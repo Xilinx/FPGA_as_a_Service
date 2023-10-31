@@ -34,7 +34,7 @@ spec:
       tolerations:
       priorityClassName: "system-node-critical"
       containers:
-      - image: public.ecr.aws/xilinx_dcg/k8s-device-plugin:1.2.0
+      - image: public.ecr.aws/xilinx_dcg/k8s-device-plugin:1.3.0
         name: device-plugin
         env:
         - name: U30NameConvention
