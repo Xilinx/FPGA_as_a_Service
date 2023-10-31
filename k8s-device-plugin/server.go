@@ -170,7 +170,11 @@ func NewFPGADevicePlugin() *FPGADevicePlugin {
 						DSAtype = getModifiedDSAtype(ModifyNames[matchkey], device)
 					}
 				} else {
-					DSAtype = device.shellVer + "-" + device.timestamp
+					if strings.EqualFold(device.shellVer, "MA35") {
+						DSAtype = device.shellVer
+					} else {
+						DSAtype = device.shellVer + "-" + device.timestamp
+					}
 				}
 				id := device.DBDF
 				if subMap, ok := devMap[DSAtype]; ok {

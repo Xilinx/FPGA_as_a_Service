@@ -18,6 +18,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -54,6 +55,15 @@ const (
 	ADVANTECH_ID   = "0x13fe"
 	AWS_ID         = "0x1d0f"
 	AristaVendorID = "0x3475"
+)
+
+const (
+	DevicesPath       = "/dev"
+	AmaDevicePrefix   = "ama_transcoder"
+	MiscClassPath     = "/sys/class/misc"
+	AmaBusId          = "bus_id"
+	AmaDeivceInfo     = "device_info"
+	AmaPlatformPrefix = "MA"
 )
 
 type Pairs struct {
@@ -149,7 +159,7 @@ func IsUserPf(pciID string) bool {
 	return FileExist(fname)
 }
 
-func GetDevices() ([]Device, error) {
+func GetAlveoDevices() ([]Device, error) {
 	var devices []Device
 	pairMap := make(map[string]*Pairs)
 	pciFiles, err := ioutil.ReadDir(SysfsDevices)
@@ -338,26 +348,169 @@ func GetDevices() ([]Device, error) {
 	return devices, nil
 }
 
+// List all AMA devices
+func GetAMADevices() ([]Device, error) {
+	var devices []Device
+	pairMap := make(map[string]*Pairs)
+	if _, err := os.Stat(DevicesPath); os.IsNotExist(err) {
+		// no devices path found
+		return nil, err
+	}
+	devFiles, err := ioutil.ReadDir(DevicesPath)
+	if err != nil {
+		fmt.Errorf("Cannot read folder %s", DevicesPath)
+	}
+
+	for _, devFile := range devFiles {
+		if devFile.IsDir() {
+			// not a device
+			continue
+		}
+
+		//renderID
+		devId := devFile.Name()
+		if !strings.HasPrefix(devId, AmaDevicePrefix) {
+			// not an AMA device
+			continue
+		}
+
+		//DBDF
+		busId, err := GetFileContent(path.Join(MiscClassPath, devId, AmaBusId))
+		if err != nil {
+			return nil, err
+		}
+
+		DBD := busId[:len(busId)-2]
+		if _, ok := pairMap[DBD]; !ok {
+			pairMap[DBD] = &Pairs{
+				Mgmt: "",
+				User: "",
+				Qdma: "",
+			}
+		}
+		pairMap[DBD].User = path.Join(DevicesPath, devId)
+		if err != nil {
+			return nil, err
+		}
+
+		productNameKey, productSNKey, deviceIdKey := "Product name", "Product serial number", "PCIe device ID"
+		// open additional AMA device info file
+		file, err := os.Open(path.Join(MiscClassPath, devId, AmaDeivceInfo))
+		defer file.Close()
+		if err != nil {
+			fmt.Errorf("Failed to open file path %s", path.Join(MiscClassPath, devId, AmaDeivceInfo))
+			return nil, err
+		}
+
+		// read file line by line
+		fscanner := bufio.NewScanner(file)
+		fscanner.Split(bufio.ScanLines)
+		boardName := ""
+		SN := ""
+		devid := ""
+		for fscanner.Scan() {
+			line := fscanner.Text()
+			strs := strings.Split(line, "=")
+			if len(strs) != 2 {
+				continue
+			}
+
+			if strings.EqualFold(productNameKey, strings.TrimSpace(strs[0])) {
+				//fmt.Printf("BoardName: %v \n", strings.TrimSpace(strs[1]))
+				boardName = "MA35"
+
+			}
+			if strings.EqualFold(productSNKey, strings.TrimSpace(strs[0])) {
+				//fmt.Printf("SerialNumber: %v \n", strings.TrimSpace(strs[1]))
+				SN = strings.TrimSpace(strs[1])
+			}
+			if strings.EqualFold(deviceIdKey, strings.TrimSpace(strs[0])) {
+				//fmt.Printf("DeviceID: %v \n", strings.TrimSpace(strs[1]))
+				devid = strings.TrimSpace(strs[1])
+			}
+		}
+		//TODO: check temp, power, fan speed etc, to give a healthy level
+		//so far, return Healthy
+		healthy := pluginapi.Healthy
+		//healthy := "temp-health"
+		if strings.EqualFold(VirtualDev, "True") {
+			for i := 0; i < VirtualNum; i++ {
+				devices = append(devices, Device{
+					index:      strconv.Itoa(len(devices) + 1),
+					shellVer:   boardName,
+					deviceType: boardName,
+					uuid:       "ma35",
+					timestamp:  "0",
+					DBDF:       busId + "-" + strconv.Itoa(i),
+					deviceID:   devid,
+					Healthy:    healthy,
+					SN:         SN,
+					Nodes:      pairMap[DBD],
+				})
+			}
+		} else {
+			devices = append(devices, Device{
+				index:      strconv.Itoa(len(devices) + 1),
+				shellVer:   boardName,
+				deviceType: boardName,
+				uuid:       "ma35",
+				timestamp:  "0",
+				DBDF:       busId,
+				deviceID:   devid,
+				Healthy:    healthy,
+				SN:         SN,
+				Nodes:      pairMap[DBD],
+			})
+		}
+	}
+	return devices, nil
+}
+
+func GetDevices() ([]Device, error) {
+	AMADevicesArry, err := GetAMADevices()
+	if err != nil {
+		return nil, err
+	}
+	AlveoDevicesArry, err := GetAlveoDevices()
+	if err != nil {
+		return nil, err
+	}
+	//combine Alveo device list and AMA device list into one list
+	for _, AlveoDevice := range AlveoDevicesArry {
+		AMADevicesArry = append(AMADevicesArry, AlveoDevice)
+	}
+	return AMADevicesArry, err
+}
+
 /*
 func main() {
-	devices, err := GetDevices()
+
+	//ama_devices, err := GetAMADevices()
+	//if err != nil {
+	//	fmt.Printf("%s !!!\n", err)
+	//	return
+	//}
+		ama_devices, err := GetAMADevices()
+		if err != nil {
+			fmt.Printf("%s !!!\n", err)
+			return
+		}
+		for _, device := range ama_devices {
+			fmt.Printf("AMADevice: %v \n", device)
+			fmt.Printf("AMADriver: %v \n",device.Nodes)
+		}
+	all_devices, err := GetAMADevices()
 	if err != nil {
 		fmt.Printf("%s !!!\n", err)
 		return
 	}
-
-	//SNFolder, err := GetFileNameFromPrefix(path.Join(SysfsDevices, "0000:e3:00.1"), SNSTR)
-	//fname := path.Join(SysfsDevices, "0000:e3:00.1", SNFolder, SNFile)
-	//content, err := GetFileContent(fname)
-	//SN := content
-	//fmt.Printf("SN: %v \n", SN)
-	for _, device := range devices {
-		fmt.Printf("Device: %v \n", device)
-		fmt.Printf("Type: %v \n", device.deviceType)
-		fmt.Printf("UUID: %v \n", device.uuid)
-		fmt.Printf("Timestamp: %v \n", device.timestamp)
-		fmt.Printf("SN: %v  \n", device.SN)
-		fmt.Printf("ID: %s  \n\n", device.deviceID)
+	for _, device := range all_devices {
+		fmt.Printf("AMA ShellVer: %v \n", device.shellVer)
+		fmt.Printf("AMA Timestamp: %v \n", device.timestamp)
+		fmt.Printf("AMA DBDF: %v \n", device.DBDF)
+		fmt.Printf("AMA deviceID: %v \n", device.deviceID)
+		fmt.Printf("AMA SN: %v \n", device.SN)
+		fmt.Printf("AMA Driver: %v \n", device.Nodes)
 	}
 }
 */
